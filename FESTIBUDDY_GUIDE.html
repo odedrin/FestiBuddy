@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FestiBud — User Guide & Product Documentation</title>
+  <style>
+    :root {
+      --bg:        #0d0d0f;
+      --surface:   #16181c;
+      --surface2:  #1e2126;
+      --border:    #2a2d35;
+      --text:      #e8eaf0;
+      --sub:       #7a8090;
+      --teal:      #4ecdc4;
+      --red:       #ff6b6b;
+      --accent:    #4ecdc4;
+      --code-bg:   #111318;
+      --pill-bg:   #1e2126;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── Layout ── */
+    .layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ── */
+    nav {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 32px 0;
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .nav-logo {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+      letter-spacing: -0.3px;
+    }
+    .nav-logo span { color: var(--teal); }
+
+    nav ul { list-style: none; }
+    nav ul li a {
+      display: block;
+      padding: 6px 20px;
+      color: var(--sub);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    nav ul li a:hover { color: var(--text); border-left-color: var(--border); }
+    nav ul li.section > a {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--sub);
+      margin-top: 16px;
+      padding-bottom: 4px;
+      cursor: default;
+      pointer-events: none;
+    }
+    nav ul li.sub > a { padding-left: 32px; }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      max-width: 820px;
+      padding: 56px 52px 120px;
+    }
+
+    /* ── Header ── */
+    .doc-header {
+      margin-bottom: 48px;
+      padding-bottom: 32px;
+      border-bottom: 1px solid var(--border);
+    }
+    .doc-header h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.8px;
+      color: var(--text);
+      margin-bottom: 12px;
+    }
+    .doc-header h1 span { color: var(--teal); }
+    .meta-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+    .pill {
+      background: var(--pill-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--sub);
+    }
+
+    /* ── Sections ── */
+    section { margin-bottom: 64px; }
+    section:target { scroll-margin-top: 24px; }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: -0.4px;
+      color: var(--text);
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    h2 .sec-num {
+      background: var(--teal);
+      color: #000;
+      font-size: 11px;
+      font-weight: 800;
+      border-radius: 6px;
+      padding: 2px 7px;
+      letter-spacing: 0.2px;
+    }
+
+    h3 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 28px 0 10px;
+    }
+    h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sub);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin: 20px 0 8px;
+    }
+
+    p { margin-bottom: 14px; color: var(--text); }
+    p:last-child { margin-bottom: 0; }
+
+    strong { color: var(--text); font-weight: 600; }
+    em { color: var(--teal); font-style: normal; font-weight: 500; }
+
+    a { color: var(--teal); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Callout / info box ── */
+    .callout {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--teal);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin: 20px 0;
+      font-size: 14px;
+      color: var(--sub);
+    }
+
+    /* ── Tables ── */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 16px 0 24px;
+      font-size: 14px;
+    }
+    thead tr { border-bottom: 1px solid var(--border); }
+    th {
+      text-align: left;
+      padding: 8px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--sub);
+    }
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    td code, th code { font-size: 12px; }
+
+    /* ── Code ── */
+    code {
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
+      font-size: 12.5px;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      color: var(--teal);
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      margin: 16px 0 24px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #b0c4d8;
+    }
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      color: inherit;
+      font-size: inherit;
+    }
+    .math {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 20px;
+      text-align: center;
+      font-size: 17px;
+      color: var(--teal);
+      margin: 16px 0;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Curve diagram ── */
+    .curve-diagram {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin: 20px 0;
+    }
+    .curve-diagram svg { display: block; width: 100%; max-width: 560px; margin: 0 auto; }
+
+    /* ── Phase strip ── */
+    .phase-strip {
+      display: flex;
+      border-radius: 8px;
+      overflow: hidden;
+      height: 32px;
+      margin: 16px 0;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .phase-strip .ph {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.8);
+    }
+
+    /* ── List ── */
+    ul, ol { padding-left: 22px; margin: 10px 0 16px; }
+    li { margin-bottom: 6px; color: var(--text); }
+    li::marker { color: var(--teal); }
+
+    /* ── Screen card ── */
+    .screen-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin: 20px 0;
+    }
+    .screen-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--teal);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .screen-card-title .badge {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      padding: 2px 8px;
+      font-size: 10px;
+      color: var(--sub);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    /* ── Anchor mode cards ── */
+    .modes { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 20px 0; }
+    .mode-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .mode-card h4 {
+      color: var(--teal);
+      margin: 0 0 8px;
+      font-size: 13px;
+    }
+    .mode-card p { font-size: 13px; color: var(--sub); margin: 0; }
+
+    /* ── File tree ── */
+    .filetree {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 22px;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
+      font-size: 12.5px;
+      line-height: 1.8;
+    }
+    .filetree .dir { color: var(--sub); }
+    .filetree .file { color: var(--text); }
+    .filetree .comment { color: #4a5568; }
+
+    /* ── Roadmap ── */
+    .roadmap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+    .roadmap-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      font-size: 13px;
+    }
+    .roadmap-item strong { display: block; color: var(--text); margin-bottom: 4px; }
+    .roadmap-item p { color: var(--sub); margin: 0; font-size: 12px; line-height: 1.5; }
+    .roadmap-item.critical { border-left: 3px solid var(--red); }
+
+    .limit-list { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+    .limit-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid #ff6b6b44;
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+    }
+    .limit-item strong { color: var(--red); display: block; margin-bottom: 3px; }
+    .limit-item p { color: var(--sub); margin: 0; line-height: 1.5; }
+
+    /* ── Footer ── */
+    footer {
+      margin-top: 80px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--sub);
+    }
+
+    @media (max-width: 900px) {
+      nav { display: none; }
+      main { padding: 32px 24px 80px; }
+      .modes { grid-template-columns: 1fr; }
+      .roadmap-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ── Sidebar ── -->
+  <nav>
+    <div class="nav-logo">Festi<span>Bud</span></div>
+    <ul>
+      <li class="section"><a href="#what">Overview</a></li>
+      <li><a href="#what">1. What is FestiBud?</a></li>
+      <li><a href="#model">2. Superposition Model</a></li>
+      <li><a href="#types">3. Stopwatch Types</a></li>
+      <li class="section"><a href="#screens">Screens</a></li>
+      <li><a href="#stopwatches">4.1 Stopwatches</a></li>
+      <li><a href="#graph">4.2 Graph</a></li>
+      <li><a href="#types-screen">4.3 Types</a></li>
+      <li><a href="#plan-mode">4.4 Plan Mode</a></li>
+      <li class="section"><a href="#plans">Deep Dives</a></li>
+      <li><a href="#plans">5. Working with Plans</a></li>
+      <li><a href="#custom">6. Custom Types</a></li>
+      <li><a href="#tech">7. Technical Reference</a></li>
+      <li><a href="#roadmap">8. Roadmap</a></li>
+    </ul>
+  </nav>
+
+  <!-- ── Main ── -->
+  <main>
+
+    <!-- Header -->
+    <div class="doc-header">
+      <h1>Festi<span>Bud</span></h1>
+      <p style="color:var(--sub); font-size:16px;">User Guide &amp; Product Documentation</p>
+      <div class="meta-pills">
+        <span class="pill">v1.1</span>
+        <span class="pill">iOS / Android</span>
+        <span class="pill">React Native + Expo</span>
+        <span class="pill">Fully offline</span>
+        <span class="pill">June 2026</span>
+      </div>
+    </div>
+
+    <!-- ── 1. What is FestiBud? ── -->
+    <section id="what">
+      <h2><span class="sec-num">1</span> What is FestiBud?</h2>
+      <p>
+        FestiBud is a <strong>harm reduction tool</strong> for people who take medications or
+        substances and want to understand the timing, duration, and interaction of their effects.
+        By planning ahead and visualising how multiple substances overlap across time, users can
+        make safer decisions — avoiding dangerous combinations, preventing unintentional
+        re-dosing, and understanding when effects will peak or subside.
+      </p>
+      <p>
+        The core engine is a <strong>superposition stopwatch</strong>: each substance is modelled
+        as a rise-and-fall curve f(t), and FestiBud displays the sum of all active curves — the
+        superposition signal — as a live graph with a deterministic prediction of the future.
+      </p>
+      <div class="callout">
+        FestiBud does not encourage or promote substance use. It is a safety and planning tool,
+        designed to reduce harm for people who are already making their own informed choices.
+        All data stays on your device — nothing is ever transmitted or stored externally.
+      </div>
+    </section>
+
+    <!-- ── 2. Superposition Model ── -->
+    <section id="model">
+      <h2><span class="sec-num">2</span> The Superposition Model</h2>
+
+      <h3>The individual curve f(t)</h3>
+      <p>
+        Each stopwatch type defines a piecewise function <strong>f(t)</strong>, where <em>t</em>
+        is the elapsed time since the stopwatch was started. The function has four phases:
+      </p>
+
+      <!-- SVG curve diagram -->
+      <div class="curve-diagram">
+        <svg viewBox="0 0 560 180" xmlns="http://www.w3.org/2000/svg">
+          <!-- axes -->
+          <line x1="50" y1="20" x2="50" y2="145" stroke="#3a3f4a" stroke-width="1"/>
+          <line x1="50" y1="145" x2="540" y2="145" stroke="#3a3f4a" stroke-width="1"/>
+          <!-- y labels -->
+          <text x="44" y="36" text-anchor="end" fill="#7a8090" font-size="11" font-family="monospace">100</text>
+          <text x="44" y="101" text-anchor="end" fill="#7a8090" font-size="11" font-family="monospace"> 35</text>
+          <text x="44" y="149" text-anchor="end" fill="#7a8090" font-size="11" font-family="monospace">  0</text>
+          <!-- grid -->
+          <line x1="50" y1="34" x2="540" y2="34" stroke="#2a2d35" stroke-width="1" stroke-dasharray="4,4"/>
+          <line x1="50" y1="99" x2="540" y2="99" stroke="#2a2d35" stroke-width="1" stroke-dasharray="4,4"/>
+          <!-- phase shading -->
+          <rect x="50"  y="20" width="90"  height="125" fill="#ff6b6b" opacity="0.06"/>
+          <rect x="140" y="20" width="100" height="125" fill="#ffd166" opacity="0.06"/>
+          <rect x="240" y="20" width="130" height="125" fill="#4ecdc4" opacity="0.08"/>
+          <rect x="370" y="20" width="170" height="125" fill="#6c5ce7" opacity="0.06"/>
+          <!-- curve -->
+          <polyline
+            points="50,145 90,99 140,34 240,34 370,34 540,145"
+            fill="none" stroke="#4ecdc4" stroke-width="2.5" stroke-linejoin="round"/>
+          <!-- phase tick lines -->
+          <line x1="140" y1="140" x2="140" y2="150" stroke="#4a5568" stroke-width="1"/>
+          <line x1="240" y1="140" x2="240" y2="150" stroke="#4a5568" stroke-width="1"/>
+          <line x1="370" y1="140" x2="370" y2="150" stroke="#4a5568" stroke-width="1"/>
+          <!-- x labels -->
+          <text x="50"  y="163" text-anchor="middle" fill="#7a8090" font-size="10" font-family="monospace">0</text>
+          <text x="140" y="163" text-anchor="middle" fill="#7a8090" font-size="10" font-family="monospace">t1</text>
+          <text x="240" y="163" text-anchor="middle" fill="#7a8090" font-size="10" font-family="monospace">t2</text>
+          <text x="370" y="163" text-anchor="middle" fill="#7a8090" font-size="10" font-family="monospace">t3</text>
+          <text x="540" y="163" text-anchor="middle" fill="#7a8090" font-size="10" font-family="monospace">t4</text>
+          <!-- phase labels -->
+          <text x="95"  y="175" text-anchor="middle" fill="#ff6b6b" font-size="10" font-weight="600">Onset</text>
+          <text x="190" y="175" text-anchor="middle" fill="#ffd166" font-size="10" font-weight="600">Comeup</text>
+          <text x="305" y="175" text-anchor="middle" fill="#4ecdc4" font-size="10" font-weight="600">Peak</text>
+          <text x="455" y="175" text-anchor="middle" fill="#a29bfe" font-size="10" font-weight="600">Offset</text>
+          <!-- arrow -->
+          <text x="545" y="148" fill="#4a5568" font-size="12">▶</text>
+        </svg>
+      </div>
+
+      <table>
+        <thead><tr><th>Phase</th><th>Value range</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Onset</strong></td><td><code>0 → onsetEndFraction × peak</code></td><td>Initial slow ramp from zero before effects are noticeable.</td></tr>
+          <tr><td><strong>Comeup</strong></td><td><code>onsetEndFraction × peak → peak</code></td><td>Accelerating rise to the peak value.</td></tr>
+          <tr><td><strong>Peak</strong></td><td>constant at <code>peakValue</code></td><td>The plateau. Duration is an explicit parameter.</td></tr>
+          <tr><td><strong>Offset</strong></td><td><code>peakValue → 0</code></td><td>The comedown / fade back to zero.</td></tr>
+        </tbody>
+      </table>
+      <p>Each phase has its own <strong>duration</strong> (in minutes) and <strong>curve shape</strong>:
+        <code>linear</code>, <code>easeIn</code>, <code>easeOut</code>, or <code>sigmoid</code>.</p>
+
+      <h3>The global signal y(t)</h3>
+      <p>
+        When multiple stopwatches run simultaneously — including multiple instances of the same
+        type started at different times — FestiBud computes:
+      </p>
+      <div class="math">y(t) = Σ f<sub>i</sub>(t − startTime<sub>i</sub>)</div>
+      <p>
+        The Graph screen displays this sum. The <strong>"now" line</strong> splits it into:
+      </p>
+      <ul>
+        <li><strong>Solid curve</strong> (past) — what the sum actually was</li>
+        <li><strong>Dashed curve</strong> (future) — the deterministic prediction, assuming no new stopwatches start</li>
+      </ul>
+      <p>Because each curve shape is fully defined by its type parameters, the future prediction is <strong>exact</strong>, not an estimate.</p>
+    </section>
+
+    <!-- ── 3. Stopwatch Types ── -->
+    <section id="types">
+      <h2><span class="sec-num">3</span> Stopwatch Types</h2>
+      <p>A <strong>type</strong> is a template defining the shape of f(t). Any number of simultaneous instances of the same type can run at once.</p>
+
+      <h3>Built-in types</h3>
+      <p>FestiBud ships with two types that cannot be deleted, but can be copied and customised.</p>
+
+      <div class="screen-card">
+        <div class="screen-card-title" style="color:#ff6b6b;">● Quick <span class="badge">built-in</span></div>
+        <div class="phase-strip">
+          <div class="ph" style="width:12.5%; background:#ff6b6b55;">Onset<br/>15m</div>
+          <div class="ph" style="width:12.5%; background:#ff6b6b88;">Comeup<br/>15m</div>
+          <div class="ph" style="width:25%;   background:#ff6b6b;">Peak<br/>30m</div>
+          <div class="ph" style="width:50%;   background:#ff6b6b66;">Offset<br/>60m</div>
+        </div>
+        <table>
+          <tbody>
+            <tr><td>Total duration</td><td><strong>2 hours</strong></td></tr>
+            <tr><td>Onset</td><td>15 min → 35%</td></tr>
+            <tr><td>Comeup</td><td>15 min → 100%</td></tr>
+            <tr><td>Peak</td><td>30 min at 100</td></tr>
+            <tr><td>Offset</td><td>60 min → 0</td></tr>
+            <tr><td>Shapes</td><td>All linear</td></tr>
+          </tbody>
+        </table>
+        <p style="color:var(--sub); font-size:13px;">Fast-acting, short profile. Peak is reached in 30 minutes; full cycle lasts 2 hours.</p>
+      </div>
+
+      <div class="screen-card">
+        <div class="screen-card-title" style="color:#4ecdc4;">● Extended <span class="badge">built-in</span></div>
+        <div class="phase-strip">
+          <div class="ph" style="width:10%;  background:#4ecdc455;">Onset<br/>30m</div>
+          <div class="ph" style="width:20%;  background:#4ecdc488;">Comeup<br/>60m</div>
+          <div class="ph" style="width:30%;  background:#4ecdc4;">Peak<br/>90m</div>
+          <div class="ph" style="width:40%;  background:#4ecdc466;">Offset<br/>120m</div>
+        </div>
+        <table>
+          <tbody>
+            <tr><td>Total duration</td><td><strong>5 hours</strong></td></tr>
+            <tr><td>Onset</td><td>30 min → 25%</td></tr>
+            <tr><td>Comeup</td><td>60 min → 100%</td></tr>
+            <tr><td>Peak</td><td>90 min at 100</td></tr>
+            <tr><td>Offset</td><td>120 min → 0</td></tr>
+            <tr><td>Shapes</td><td>All linear</td></tr>
+          </tbody>
+        </table>
+        <p style="color:var(--sub); font-size:13px;">Slow onset reaching only 25% after 30 min, sustained plateau, long fade. Full cycle 5 hours.</p>
+      </div>
+
+      <h3>Custom types</h3>
+      <p>Custom types appear <strong>above</strong> built-in types in the Types screen and can be edited or deleted at any time. Create one from scratch via the editor, or tap <strong>Customize</strong> on any built-in to duplicate it.</p>
+    </section>
+
+    <!-- ── 4. Screens ── -->
+    <section id="stopwatches">
+      <h2><span class="sec-num">4.1</span> Stopwatches Screen</h2>
+      <p>The main operational view. Shows all <strong>currently running</strong> stopwatch instances, updating 4× per second.</p>
+
+      <h4>Header</h4>
+      <ul>
+        <li><strong>Time since session start</strong> — displays the wall-clock time elapsed since the earliest currently-running stopwatch was started (HH:MM:SS). Updates every 250 ms.</li>
+      </ul>
+
+      <h4>Stopwatch cards</h4>
+      <p>Each card shows elapsed / total time (e.g. "1h 10m / 2h") as the primary display.</p>
+      <ul>
+        <li><strong>Color stripe</strong> on the left (type color)</li>
+        <li><strong>Type name</strong> and elapsed / total time — tap the <strong>✎ edit icon</strong> to edit the start time (shifts the entire curve in place)</li>
+        <li><strong>Phase progress bar</strong> — segmented bar showing all four phases. Darker segment = higher intensity. A thin vertical cursor marks the exact current position.</li>
+        <li><strong>Current phase pill</strong> — shows the current phase name (Onset / Comeup / Peak / Offset).</li>
+        <li><strong>⏸ Pause / ▶ Resume button</strong> — freezes elapsed time; resume picks up from where it left off.</li>
+        <li><strong>✕ Stop button</strong> — removes the instance from the running total immediately.</li>
+      </ul>
+
+      <h4>Editing a start time</h4>
+      <p>Tap the <strong>✎ edit icon</strong> on any running stopwatch card. A clock picker opens showing the clock time the stopwatch started ("Started at"). Adjust the hour and minutes, then confirm. The curve shifts accordingly without restarting the stopwatch. Future times are not allowed — if the picked time is later than now, it is clamped to the current time.</p>
+
+      <h4>Auto-cleanup</h4>
+      <p>Every minute, FestiBud removes any stopwatch whose curve has fully completed (reached the end of its offset phase) more than <strong>24 hours ago</strong>. This runs automatically in the background — no manual action needed.</p>
+
+      <h4>Starting a stopwatch</h4>
+      <p>Tap the <strong>+ FAB</strong> at the bottom. A bottom sheet appears with all types, <strong>favorites first</strong>. Tap <strong>▶ Start</strong> to launch an instance and close the sheet.</p>
+    </section>
+
+    <section id="graph">
+      <h2><span class="sec-num">4.2</span> Graph Screen</h2>
+      <p>Shows the full superposition graph — past (solid) and predicted future (dashed) — updating every second.</p>
+
+      <h4>Header</h4>
+      <p>Displays the wall-clock time elapsed since the earliest currently-running stopwatch was started (HH:MM:SS), labelled "elapsed".</p>
+
+      <h4>The graph</h4>
+      <ul>
+        <li><strong>Teal line (sum)</strong> — superposition y(t). Solid past, dashed future at 45% opacity.</li>
+        <li><strong>Colored lines (individual)</strong> — each running stopwatch at its type color. 45% opacity past, 20% future.</li>
+        <li><strong>Red dashed vertical line</strong> — "now" marker.</li>
+        <li><strong>X-axis</strong> — wall-clock time. Tick density adapts to the time window.</li>
+        <li><strong>Y-axis</strong> — value scale, up to ~115% of the summed peaks.</li>
+      </ul>
+      <p>The time window spans from 20 minutes before the earliest running stopwatch to 20 minutes after the last one finishes.</p>
+
+      <h4>Legend</h4>
+      <p>The first row shows a "Sum y(t)" label for the teal superposition line. Each running stopwatch then gets its own row showing: color swatch, type name, current phase pill, and elapsed / total time (e.g. "01:10:00 / 2h 00m").</p>
+
+      <h4>Zoom and pan</h4>
+      <p><strong>Pinch</strong> on the graph to zoom the visible time window between 1 and 12 hours. <strong>Swipe horizontally</strong> to pan backward or forward in time. A <strong>↩ Back to Now</strong> button appears inside the graph card whenever you've panned or zoomed away from the auto window — tap it to snap back to the live view.</p>
+
+      <h4>Plan overlay</h4>
+      <p>Each saved plan has a show/hide chip below the graph card. When shown, the plan's entries appear as <strong>vertical start-time marker lines</strong> on the graph — one line per entry, labeled with the plan name and substance name. No curves are drawn; only start times are marked, keeping the live signal uncluttered.</p>
+
+      <h4>Plan Mode button</h4>
+      <p>A pill button below the graph card opens <a href="#plan-mode">Plan Mode</a>.</p>
+    </section>
+
+    <section id="types-screen">
+      <h2><span class="sec-num">4.3</span> Types Screen</h2>
+      <p>Manage your stopwatch type library. Two sections: <strong>Custom</strong> (your types, shown first) and <strong>Built-in</strong> (the two presets).</p>
+
+      <h4>Type cards</h4>
+      <p>Each card shows the type name, total duration, peak value, a mini sparkline curve preview, a four-phase breakdown table, and a segmented proportion bar. Action buttons:</p>
+      <ul>
+        <li><strong>▶ Start</strong> — starts an instance directly from this screen</li>
+        <li><strong>Customize / Edit</strong> — opens the type editor</li>
+        <li><strong>✕</strong> — deletes the type (custom only; confirmation required)</li>
+        <li><strong>★ / ☆</strong> — toggles favorite. Favorited types appear first in the add-stopwatch sheet.</li>
+      </ul>
+    </section>
+
+    <section id="plan-mode">
+      <h2><span class="sec-num">4.4</span> Plan Mode</h2>
+      <p>Accessed from the Graph screen. A separate screen (not a tab) for hypothetically placing entries and previewing the curve <strong>without starting any real stopwatches</strong>.</p>
+      <div class="callout">
+        Example use: "If I start an Extended now and a Quick in 45 minutes, what does my evening curve look like?"
+      </div>
+
+      <h4>Plans</h4>
+      <p>You can have multiple named plans. A <strong>chip bar</strong> at the top switches between them.</p>
+      <ul>
+        <li><strong>Tap</strong> a chip to select</li>
+        <li><strong>Long-press</strong> to rename or delete</li>
+        <li><strong>✏ pencil icon</strong> on the selected chip — rename dialog</li>
+        <li><strong>+ New</strong> — creates a new empty plan</li>
+      </ul>
+
+      <h4>Plan graph</h4>
+      <p>The graph previews the selected plan using vertical <strong>start-time markers</strong> for each entry — no live stopwatch curves are shown. The graph updates in real time, so as minutes pass, the markers shift correctly relative to the "now" line.</p>
+
+      <h4>Plan entries</h4>
+      <p>Each entry has a type, a human-readable time offset from now (e.g. "+2h 15m", "−30m", "now"), an <strong>Edit</strong> button (opens the time editor), and a <strong>✕</strong> delete button.</p>
+      <p>Tap the <strong>+ FAB</strong> to add a new entry: pick a type, set the timing using any of the three anchor modes (Start at, Peak at, Comedown), tap <strong>Add Entry</strong>. The same modes are available when editing an existing entry.</p>
+      <p>Entries store an <strong>absolute target time</strong>, so a plan created today can include entries scheduled for tomorrow or later without any time drift.</p>
+    </section>
+
+    <!-- ── 5. Working with Plans ── -->
+    <section id="plans">
+      <h2><span class="sec-num">5</span> Working with Plans</h2>
+      <p>When adding or editing a plan entry, you set its timing via one of three <strong>anchor modes</strong>:</p>
+
+      <div class="modes">
+        <div class="mode-card">
+          <h4>Start at</h4>
+          <p>Pick the clock time at which the stopwatch begins. Offset = target time − now.<br/><br/>
+          <em>"I took it at 14:30."</em></p>
+        </div>
+        <div class="mode-card">
+          <h4>Peak at</h4>
+          <p>Pick when the peak phase begins. Start is back-calculated: <code>start = peak − (onset + comeup)</code>.<br/><br/>
+          <em>"I want full effect by 19:00."</em></p>
+        </div>
+        <div class="mode-card">
+          <h4>Comedown</h4>
+          <p>Pick a target value (% of peak) and the clock time it should be reached during offset. Start is solved via binary search.<br/><br/>
+          <em>"25% by 17:00."</em></p>
+        </div>
+      </div>
+
+      <h3>Day selector</h3>
+      <p>A <strong>−1d / +1d</strong> control above the clock picker lets you shift the entry to a different day. The label shows "Today", "Tomorrow", or "+Nd" for further ahead. This makes it easy to plan across midnight without needing a full calendar UI.</p>
+
+      <h3>The clock picker</h3>
+      <p>An <strong>HH:MM picker</strong> is the main control in all three modes:</p>
+      <ul>
+        <li><strong>▲ / ▼</strong> — adjust hour (±1h, wraps 0–23)</li>
+        <li><strong>+15 / +5 / +1</strong> and <strong>−15 / −5 / −1</strong> — adjust minutes (wraps 0–59)</li>
+      </ul>
+
+      <h3>Offset display</h3>
+      <p>The offset from now is shown in a human-readable format that scales with duration:</p>
+      <ul>
+        <li>&lt; 1 hour: <strong>+45m</strong></li>
+        <li>1–24 hours: <strong>+2h 15m</strong> (minutes omitted if exactly on the hour)</li>
+        <li>1+ days: <strong>+1d 3h 30m</strong> (zero components omitted)</li>
+        <li>Past entries use a <strong>−</strong> prefix (e.g. <strong>−30m from now</strong>)</li>
+      </ul>
+
+      <h3>Timeline preview</h3>
+      <p>A <strong>Start → Peak → End</strong> strip below the picker shows computed wall-clock milestones, updating live as you adjust the dials.</p>
+    </section>
+
+    <!-- ── 6. Custom Types ── -->
+    <section id="custom">
+      <h2><span class="sec-num">6</span> Creating Custom Types</h2>
+      <p>Open the type editor via <strong>Customize</strong> (on a built-in) or <strong>Edit</strong> (on an existing custom).</p>
+
+      <table>
+        <thead><tr><th>Parameter</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Name</strong></td><td>Display name shown throughout the app</td></tr>
+          <tr><td><strong>Color</strong></td><td>Pick from a palette of 12 colors</td></tr>
+          <tr><td><strong>Onset duration</strong></td><td>Minutes for 0 → onset-end ramp</td></tr>
+          <tr><td><strong>Comeup duration</strong></td><td>Minutes for onset-end → peak ramp</td></tr>
+          <tr><td><strong>Peak duration</strong></td><td>Minutes held at maximum value</td></tr>
+          <tr><td><strong>Offset duration</strong></td><td>Minutes for peak → 0 comedown</td></tr>
+          <tr><td><strong>Peak value</strong></td><td>Maximum value reached at peak</td></tr>
+          <tr><td><strong>Onset end fraction</strong></td><td>Where the onset/comeup boundary sits as a fraction of peak (e.g. 0.35 = 35%). Controls how pronounced the two-stage rise is.</td></tr>
+          <tr><td><strong>Onset shape</strong></td><td>Easing for the onset phase</td></tr>
+          <tr><td><strong>Comeup shape</strong></td><td>Easing for the comeup phase</td></tr>
+          <tr><td><strong>Offset shape</strong></td><td>Easing for the offset/comedown phase</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Curve shapes</h3>
+      <table>
+        <thead><tr><th>Shape</th><th>Behavior</th><th>Formula</th></tr></thead>
+        <tbody>
+          <tr><td><code>linear</code></td><td>Constant rate of change</td><td>p</td></tr>
+          <tr><td><code>easeIn</code></td><td>Starts slow, accelerates</td><td>p²</td></tr>
+          <tr><td><code>easeOut</code></td><td>Starts fast, decelerates</td><td>1 − (1−p)²</td></tr>
+          <tr><td><code>sigmoid</code></td><td>Slow → fast → slow (S-curve)</td><td>Logistic, k=10, normalised</td></tr>
+        </tbody>
+      </table>
+      <p>A <strong>live sparkline</strong> in the editor reflects your parameter changes in real time.</p>
+    </section>
+
+    <!-- ── 7. Technical Reference ── -->
+    <section id="tech">
+      <h2><span class="sec-num">7</span> Technical Reference</h2>
+
+      <h3>File map</h3>
+      <div class="filetree">
+<span class="dir">app/</span>
+<span class="dir">├── (tabs)/</span>
+<span class="file">│   ├── index.tsx        </span><span class="comment">— Stopwatches screen</span>
+<span class="file">│   ├── explore.tsx      </span><span class="comment">— Graph screen</span>
+<span class="file">│   └── types.tsx        </span><span class="comment">— Types screen</span>
+<span class="file">├── plan.tsx             </span><span class="comment">— Plan Mode screen</span>
+<span class="file">└── _layout.tsx          </span><span class="comment">— Root stack + StopwatchProvider</span>
+
+<span class="dir">components/</span>
+<span class="file">├── Graph.tsx                 </span><span class="comment">— SVG graph (react-native-svg)</span>
+<span class="file">├── StopwatchCard.tsx         </span><span class="comment">— Card with progress bar</span>
+<span class="file">├── TypeCard.tsx              </span><span class="comment">— Card with sparkline</span>
+<span class="file">├── TypeEditorModal.tsx       </span><span class="comment">— Type create/edit form</span>
+<span class="file">├── AddStopwatchModal.tsx     </span><span class="comment">— Bottom sheet: start a stopwatch</span>
+<span class="file">├── EditStopwatchStartModal.tsx</span><span class="comment">— Bottom sheet: edit running stopwatch start time</span>
+<span class="file">├── AddPlanEntryModal.tsx     </span><span class="comment">— Bottom sheet: add plan entry</span>
+<span class="file">├── EditPlanEntryModal.tsx    </span><span class="comment">— Bottom sheet: edit entry time</span>
+<span class="file">├── PlanEntryEditor.tsx       </span><span class="comment">— Shared editor UI for plan entry timing (all three anchor modes)</span>
+<span class="file">└── TimePickers.tsx           </span><span class="comment">— HH:MM clock picker and minute-adjustment controls</span>
+
+<span class="dir">engine/</span>
+<span class="file">└── curveEngine.ts       </span><span class="comment">— Core math: evaluate, phase helpers, inverse solvers</span>
+
+<span class="dir">store/</span>
+<span class="file">└── StopwatchContext.tsx </span><span class="comment">— React Context + useReducer (all state)</span>
+
+<span class="dir">types/</span>
+<span class="file">└── models.ts            </span><span class="comment">— TypeScript interfaces</span>
+
+<span class="dir">utils/</span>
+<span class="file">└── formatOffset.ts      </span><span class="comment">— Human-readable duration strings for plan offsets</span>
+
+<span class="dir">constants/</span>
+<span class="file">├── defaultTypes.ts      </span><span class="comment">— Built-in types + color palette</span>
+<span class="file">└── theme.ts             </span><span class="comment">— Color tokens</span>
+      </div>
+
+      <h3>State model</h3>
+      <p>All state lives in a single <code>AppState</code> managed by <code>useReducer</code>:</p>
+      <pre><code>interface AppState {
+  types:              StopwatchType[];      // all type definitions
+  activeStopwatches:  ActiveStopwatch[];    // running instances
+  favoriteTypeIds:    string[];             // ordered favorite IDs
+  plans:              Plan[];              // plan mode plans
+}</code></pre>
+      <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types are always restored from code; custom types are merged from storage.</div>
+
+      <h3>Curve engine — key exports</h3>
+      <table>
+        <thead><tr><th>Function</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td><code>evaluate(type, elapsedMs)</code></td><td>Returns f(t). Called 300× per graph render and 4×/s per card.</td></tr>
+          <tr><td><code>totalDuration(type)</code></td><td>Sum of all four phase durations.</td></tr>
+          <tr><td><code>currentPhase(type, elapsedMs)</code></td><td>Returns <code>'onset' | 'comeup' | 'peak' | 'offset' | 'done' | 'pending'</code>.</td></tr>
+          <tr><td><code>solveStartForPeakAt(type, peakClockMs)</code></td><td>Returns <code>startTime</code> such that peak begins at <code>peakClockMs</code>.</td></tr>
+          <tr><td><code>solveStartForOffsetValue(type, value, clockMs)</code></td><td>64-iteration binary search. Returns <code>startTime</code> such that the offset phase hits <code>value</code> at <code>clockMs</code>. Accurate to sub-ms.</td></tr>
+          <tr><td><code>formatDuration(ms)</code></td><td><code>"1h 20m"</code> — used in type cards and plan entries.</td></tr>
+          <tr><td><code>formatElapsed(ms)</code></td><td><code>"01:23:45"</code> — used in stopwatch cards and graph header.</td></tr>
+          <tr><td><code>phaseRemainingMs(type, elapsedMs)</code></td><td>Returns ms remaining in the current phase.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Graph component</h3>
+      <p><code>Graph</code> accepts two optional override props:</p>
+      <ul>
+        <li><code>overrideEntries?: GraphEntry[]</code> — when provided, renders these entries instead of the live active stopwatches. Pass <code>[]</code> to suppress all curves (Plan Mode does this so only markers are visible).</li>
+        <li><code>planMarkers?: PlanMarker[]</code> — renders vertical start-time marker lines on the graph. Each marker shows a full-height colored line with a label chip ("Plan name · Substance name").</li>
+      </ul>
+      <pre><code>interface GraphEntry {
+  type:      StopwatchType;
+  startTime: number;  // absolute ms
+}
+
+interface PlanMarker {
+  startTime: number;  // absolute ms
+  label:     string;  // e.g. "Festival · Extended"
+  color:     string;  // CSS/RN color string
+}</code></pre>
+      <p>Paths are built from 300 sample points, split at "now" into solid (past) and dashed (future) SVG <code>&lt;Path&gt;</code> elements.</p>
+
+      <h3>PlannedEntry model</h3>
+      <p>Plan entries store an <strong>absolute timestamp</strong> rather than a relative offset:</p>
+      <pre><code>interface PlannedEntry {
+  id:         string;
+  typeId:     string;
+  targetTime: number;  // absolute ms (was: offsetMinutes)
+}</code></pre>
+      <p>On hydration, older persisted entries with <code>offsetMinutes</code> are automatically migrated: <code>targetTime = Date.now() + offsetMinutes × 60 000</code>.</p>
+
+      <h3>formatOffset utility</h3>
+      <p><code>utils/formatOffset.ts</code> — converts a millisecond delta to a compact human-readable string used throughout plan UI:</p>
+      <pre><code>formatOffset(diffMs: number): string
+// 0       → "now"
+// 45 min  → "+45m"
+// 2h 15m  → "+2h 15m"
+// 1d 3h   → "+1d 3h"
+// negative → "−" prefix</code></pre>
+    </section>
+
+    <!-- ── 8. Roadmap ── -->
+    <section id="roadmap">
+      <h2><span class="sec-num">8</span> Limitations &amp; Roadmap</h2>
+
+      <h3>Priority roadmap (next up)</h3>
+      <ol style="display:flex; flex-direction:column; gap:10px; margin:16px 0; padding-left:0; list-style:none;">
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">1</span>
+          <div><strong>Substance database</strong><p>Built-in read-only library of widely used substances with pharmacokinetic data, bundled statically in the app (no runtime API calls — fully offline). Data sources: <strong>PsychonautWiki GraphQL API</strong> (onset, comeup, peak, offset durations per route of administration) merged with <strong>TripSit <code>combos.json</code></strong> (interaction pairs and severity). Duration ranges from PsychonautWiki are string values (e.g. "30–60 minutes") — midpoints are used as default curve parameters, which users can override via the type editor. Interaction severity levels map directly to TripSit's: Dangerous / Unsafe / Caution / Low Risk.</p></div>
+        </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">2</span>
+          <div><strong>Graph zoom and pan are not working smoothly</strong><p>Should be fixed</p></div>
+        </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">3</span>
+          <div><strong>Interaction warnings</strong><p>When multiple substances are active or planned, surface known interaction pairs with severity (Dangerous / Caution / Low Risk / Synergy) and a brief clinical mechanism note. Warnings are ON by default; users can opt out in settings.</p></div>
+        </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">4</span>
+          <div><strong>Settings screen</strong><p>A dedicated settings screen for user preferences. Initial scope: opt-out toggle for interaction warnings, notification permissions and preferences (plan start-time alerts).</p></div>
+        </li>
+      </ol>
+
+      <h3>Current limitations</h3>
+      <div class="limit-list">
+        <div class="limit-item">
+          <strong>No history</strong>
+          <p>Stopped stopwatches are simply removed — no log of what ran and when.</p>
+        </div>
+      </div>
+
+      <h3>Potential future features</h3>
+      <div class="roadmap-grid">
+        <div class="roadmap-item">
+          <strong>History log</strong>
+          <p>Record of all past runs: start time, stop time, integrated area under the curve.</p>
+        </div>
+        <div class="roadmap-item">
+          <strong>Notifications</strong>
+          <p>Notify the user when a plan entry's scheduled start time arrives. No phase-transition or threshold notifications.</p>
+        </div>
+        <div class="roadmap-item">
+          <strong>Type library sync</strong>
+          <p>Backup and restore custom types across devices.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.1 &nbsp;·&nbsp; June 2026
+    </footer>
+
+  </main>
+</div>
+</body>
+</html>
