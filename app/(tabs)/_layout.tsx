@@ -8,13 +8,18 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
+        tabBarActiveTintColor: Colors[colorScheme].tint,
         headerShown: false,
         tabBarButton: HapticTab,
+        tabBarStyle: {
+          backgroundColor: isDark ? '#1c1c1e' : '#f2f2f7',
+          borderTopColor: isDark ? '#2c2c2e' : '#d1d1d6',
+        },
       }}
     >
       <Tabs.Screen
@@ -41,6 +46,15 @@ export default function TabLayout() {
           title: 'Types',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="slider.horizontal.3" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="settings"
+        options={{
+          title: 'Settings',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={26} name="gearshape.fill" color={color} />
           ),
         }}
       />

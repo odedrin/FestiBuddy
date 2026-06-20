@@ -33,7 +33,7 @@ export interface GraphRef {
 // ---------------------------------------------------------------------------
 
 const PAD = { top: 20, right: 16, bottom: 44, left: 46 };
-const SAMPLES = 300;
+const SAMPLES     = 150;               // halved for render performance
 const BUFFER_MS   = 20 * 60_000;       // 20-minute padding on each end
 const MIN_WINDOW  =  1 * 3_600_000;    // 1 hour minimum zoom
 const MAX_WINDOW  = 12 * 3_600_000;    // 12 hour maximum zoom
@@ -134,6 +134,13 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
     onIsPannedRef.current?.(panOffsetMs !== 0 || windowMs !== 0);
   }, [panOffsetMs, windowMs]);
 
+  // RAF handles for batching gesture-driven state updates at ≤60fps
+  const panRafRef  = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  const zoomRafRef = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
+  // Accumulator refs so RAF always commits the latest value, not a stale closure
+  const pendingPanRef  = useRef(0);
+  const pendingZoomRef = useRef(0);
+
   // ── Gesture tracking ──────────────────────────────────────────────────────
   const gestureRef = useRef({
     isPanning:            false,
@@ -162,10 +169,12 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
           // Capture the effective window at pinch start
           gestureRef.current.windowMsAtPinchStart =
             windowMsRef.current > 0 ? windowMsRef.current : wDurRef.current;
+          pendingZoomRef.current = gestureRef.current.windowMsAtPinchStart;
         } else {
           gestureRef.current.isPanning  = true;
           gestureRef.current.isPinching = false;
           gestureRef.current.lastX      = touches[0].pageX;
+          pendingPanRef.current = panOffsetMsRef.current;
         }
       },
 
@@ -173,32 +182,61 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
         const touches = e.nativeEvent.touches;
 
         if (touches.length >= 2 && gestureRef.current.isPinching) {
-          // ── Pinch to zoom ─────────────────────────────────────────────────
+          // ── Pinch to zoom — update accumulator, batch via RAF ──────────────
           const d = touchDist(touches[0], touches[1]);
           if (d < 1) return;
-          const scale     = gestureRef.current.lastDist / d;
-          const newWindow = Math.min(
+          const scale = gestureRef.current.lastDist / d;
+          pendingZoomRef.current = Math.min(
             Math.max(gestureRef.current.windowMsAtPinchStart * scale, MIN_WINDOW),
             MAX_WINDOW,
           );
-          setWindowMs(newWindow);
+          if (zoomRafRef.current === null) {
+            zoomRafRef.current = requestAnimationFrame(() => {
+              setWindowMs(pendingZoomRef.current);
+              zoomRafRef.current = null;
+            });
+          }
 
         } else if (gestureRef.current.isPanning && touches.length === 1) {
-          // ── Swipe to pan ──────────────────────────────────────────────────
-          const dx      = touches[0].pageX - gestureRef.current.lastX;
+          // ── Swipe to pan — update accumulator, batch via RAF ──────────────
+          const dx = touches[0].pageX - gestureRef.current.lastX;
           gestureRef.current.lastX = touches[0].pageX;
           const msPerPx = wDurRef.current / cwRef.current;
-          setPanOffsetMs(prev => prev - dx * msPerPx);
+          pendingPanRef.current -= dx * msPerPx;
+          if (panRafRef.current === null) {
+            panRafRef.current = requestAnimationFrame(() => {
+              setPanOffsetMs(pendingPanRef.current);
+              panRafRef.current = null;
+            });
+          }
         }
       },
+
+      // Once the Graph has the gesture, refuse to give it up.
+      // Without this, the parent ScrollView reclaims mid-drag and isPanning
+      // resets to false while the finger is still down — causing the "stops" bug.
+      onPanResponderTerminationRequest: () => false,
 
       onPanResponderRelease: () => {
         gestureRef.current.isPanning  = false;
         gestureRef.current.isPinching = false;
+        // Flush any pending updates immediately
+        if (panRafRef.current !== null) {
+          cancelAnimationFrame(panRafRef.current);
+          panRafRef.current = null;
+          setPanOffsetMs(pendingPanRef.current);
+        }
+        if (zoomRafRef.current !== null) {
+          cancelAnimationFrame(zoomRafRef.current);
+          zoomRafRef.current = null;
+          setWindowMs(pendingZoomRef.current);
+        }
       },
       onPanResponderTerminate: () => {
         gestureRef.current.isPanning  = false;
         gestureRef.current.isPinching = false;
+        if (panRafRef.current !== null) { cancelAnimationFrame(panRafRef.current); panRafRef.current = null; }
+        if (zoomRafRef.current !== null) { cancelAnimationFrame(zoomRafRef.current); zoomRafRef.current = null; }
       },
     }),
   ).current;
@@ -289,17 +327,34 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
     });
 
     // ── X-axis ticks ──────────────────────────────────────────────────────
-    const tickMs =
-      wDur < 2 * 3_600_000 ? 30 * 60_000 :
-      wDur < 8 * 3_600_000 ?  3_600_000 :
-      2 * 3_600_000;
+    // Pick the smallest "nice" interval that gives ≤8 ticks across the window.
+    // This handles auto windows wider than the manual zoom range (e.g. when a
+    // plan marker is far in the future or a stopwatch started yesterday).
+    const TICK_INTERVALS = [
+      15 * 60_000,      //  15 min
+      30 * 60_000,      //  30 min
+       1 * 3_600_000,   //   1 h
+       2 * 3_600_000,   //   2 h
+       3 * 3_600_000,   //   3 h
+       4 * 3_600_000,   //   4 h
+       6 * 3_600_000,   //   6 h
+      12 * 3_600_000,   //  12 h
+      24 * 3_600_000,   //   1 day
+    ];
+    const MAX_TICKS = 8;
+    const tickMs = TICK_INTERVALS.find(ms => wDur / ms <= MAX_TICKS) ?? 24 * 3_600_000;
+
     const firstTick = Math.ceil(wStart / tickMs) * tickMs;
     const xTicks: { x: number; label: string }[] = [];
     for (let t = firstTick; t <= wEnd; t += tickMs) {
       const d = new Date(t);
       const h = d.getHours().toString().padStart(2, '0');
       const m = d.getMinutes().toString().padStart(2, '0');
-      xTicks.push({ x: mapT(t), label: `${h}:${m}` });
+      // For windows wider than 24h, prefix the weekday so labels stay unambiguous
+      // when the same wall-clock time appears on multiple days.
+      const prefix = wDur > 24 * 3_600_000
+        ? `${['Su','Mo','Tu','We','Th','Fr','Sa'][d.getDay()]} ` : '';
+      xTicks.push({ x: mapT(t), label: `${prefix}${h}:${m}` });
     }
 
     // ── Y-axis ticks ──────────────────────────────────────────────────────

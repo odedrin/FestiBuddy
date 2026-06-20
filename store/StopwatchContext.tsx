@@ -9,6 +9,7 @@ import React, {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { evaluate, totalDuration } from '@/engine/curveEngine';
 import { DEFAULT_TYPES } from '@/constants/defaultTypes';
+import { SUBSTANCE_TYPES } from '@/constants/substanceDB';
 import type { ActiveStopwatch, Plan, PlannedEntry, StopwatchType } from '@/types/models';
 
 const STORAGE_KEY = 'festibud_state';
@@ -41,6 +42,8 @@ export interface AppState {
   activeStopwatches: ActiveStopwatch[];
   favoriteTypeIds: string[];
   plans: Plan[];
+  /** Whether to show interaction warnings on the stopwatches screen. Default: true. */
+  showInteractionWarnings: boolean;
 }
 
 type Action =
@@ -61,15 +64,20 @@ type Action =
   | { type: 'DELETE_PLAN'; payload: string }
   | { type: 'ADD_PLAN_ENTRY'; payload: { planId: string; entry: PlannedEntry } }
   | { type: 'REMOVE_PLAN_ENTRY'; payload: { planId: string; entryId: string } }
-  | { type: 'UPDATE_PLAN_ENTRY'; payload: { planId: string; entry: PlannedEntry } };
+  | { type: 'UPDATE_PLAN_ENTRY'; payload: { planId: string; entry: PlannedEntry } }
+  | { type: 'TOGGLE_INTERACTION_WARNINGS' }
+  | { type: 'REORDER_TYPES'; payload: string[] }
+  | { type: 'HIDE_TYPE'; payload: string }
+  | { type: 'UNHIDE_TYPE'; payload: string };
 
 const DEFAULT_PLAN: Plan = { id: 'plan-default', name: 'My Plan', entries: [] };
 
 const INITIAL_STATE: AppState = {
-  types: DEFAULT_TYPES,
+  types: [...DEFAULT_TYPES, ...SUBSTANCE_TYPES],
   activeStopwatches: [],
   favoriteTypeIds: [],
   plans: [DEFAULT_PLAN],
+  showInteractionWarnings: true,
 };
 
 function reducer(rawState: AppState, action: Action): AppState {
@@ -78,6 +86,7 @@ function reducer(rawState: AppState, action: Action): AppState {
     ...rawState,
     favoriteTypeIds: rawState.favoriteTypeIds ?? [],
     plans: rawState.plans ?? [DEFAULT_PLAN],
+    showInteractionWarnings: rawState.showInteractionWarnings ?? true,
   };
   switch (action.type) {
     case 'HYDRATE':
@@ -169,6 +178,9 @@ function reducer(rawState: AppState, action: Action): AppState {
       };
     }
 
+    case 'TOGGLE_INTERACTION_WARNINGS':
+      return { ...state, showInteractionWarnings: !state.showInteractionWarnings };
+
     case 'CLEANUP_STALE': {
       const now = action.payload;
       const MS_24H = 24 * 60 * 60 * 1000;
@@ -177,10 +189,23 @@ function reducer(rawState: AppState, action: Action): AppState {
         activeStopwatches: state.activeStopwatches.filter(sw => {
           const type = state.types.find(t => t.id === sw.typeId);
           if (!type) return false;
-          const elapsed = effectiveElapsed(sw, now);
           const total = totalDuration(type);
-          if (elapsed < total) return true; // still running
-          // Approximate wall-clock time when comedown ended
+
+          if (sw.pausedAt !== undefined) {
+            // Paused stopwatch: effectiveElapsed is frozen at pause time.
+            // Consider it stale if it's been paused for > 24h, OR if the
+            // pause itself was already past the end of the comedown.
+            const elapsedAtPause = sw.pausedAt - sw.startTime - (sw.totalPausedMs ?? 0);
+            const endedAtPause = sw.startTime + (sw.totalPausedMs ?? 0) + total;
+            if (elapsedAtPause >= total && now - endedAtPause >= MS_24H) return false;
+            if (now - sw.pausedAt >= MS_24H) return false;
+            return true;
+          }
+
+          // Running stopwatch
+          const elapsed = effectiveElapsed(sw, now);
+          if (elapsed < total) return true; // comedown not finished yet
+          // Wall-clock time when comedown ended
           const endedAt = sw.startTime + (sw.totalPausedMs ?? 0) + total;
           return now - endedAt < MS_24H;
         }),
@@ -241,6 +266,41 @@ function reducer(rawState: AppState, action: Action): AppState {
         ),
       };
 
+    case 'REORDER_TYPES': {
+      const newOrder = action.payload; // IDs in desired order (one section at a time)
+      const reorderSet = new Set(newOrder);
+      const firstSectionIdx = state.types.findIndex(t => reorderSet.has(t.id));
+      if (firstSectionIdx === -1) return state;
+      const others = state.types.filter(t => !reorderSet.has(t.id));
+      // insertIdx into `others`: count how many non-section items precede firstSectionIdx
+      const insertIdx = state.types
+        .slice(0, firstSectionIdx)
+        .filter(t => !reorderSet.has(t.id)).length;
+      const reordered = newOrder
+        .map(id => state.types.find(t => t.id === id))
+        .filter(Boolean) as StopwatchType[];
+      return {
+        ...state,
+        types: [...others.slice(0, insertIdx), ...reordered, ...others.slice(insertIdx)],
+      };
+    }
+
+    case 'HIDE_TYPE':
+      return {
+        ...state,
+        types: state.types.map(t =>
+          t.id === action.payload ? { ...t, hidden: true } : t,
+        ),
+      };
+
+    case 'UNHIDE_TYPE':
+      return {
+        ...state,
+        types: state.types.map(t =>
+          t.id === action.payload ? { ...t, hidden: false } : t,
+        ),
+      };
+
     default:
       return state;
   }
@@ -263,6 +323,10 @@ export interface StopwatchContextValue {
   getTypeById: (id: string) => StopwatchType | undefined;
   evaluateSum: (atTime?: number) => number;
   toggleFavorite: (typeId: string) => void;
+  reorderTypes: (ids: string[]) => void;
+  hideType: (id: string) => void;
+  unhideType: (id: string) => void;
+  toggleInteractionWarnings: () => void;
   // Plans
   addPlan: (name: string) => void;
   renamePlan: (id: string, name: string) => void;
@@ -288,8 +352,33 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         try {
           const saved = JSON.parse(raw) as Partial<AppState>;
-          const builtInIds = new Set(DEFAULT_TYPES.map(t => t.id));
-          const customTypes = (saved.types ?? []).filter(t => !builtInIds.has(t.id));
+          // Built-in and substance IDs are always re-sourced from the bundle.
+          // LEGACY_IDS covers presets that were removed so they don't survive as custom types.
+          const LEGACY_IDS = new Set(['preset-quick', 'preset-extended']);
+          const builtInIds = new Set([
+            ...DEFAULT_TYPES.map(t => t.id),
+            ...SUBSTANCE_TYPES.map(t => t.id),
+          ]);
+          const customTypes = (saved.types ?? []).filter(
+            t => !builtInIds.has(t.id) && !LEGACY_IDS.has(t.id),
+          );
+
+          // Preserve user-defined ordering of built-in and substance types.
+          // Re-source data from the bundle (so name/color/curve updates apply),
+          // but keep the saved order. Append any brand-new bundle types at the end.
+          const savedIds = new Set((saved.types ?? []).map(t => t.id));
+          const orderedBuiltIns = [
+            ...(saved.types ?? [])
+              .filter(t => DEFAULT_TYPES.some(d => d.id === t.id))
+              .map(t => ({ ...DEFAULT_TYPES.find(d => d.id === t.id)!, hidden: t.hidden })),
+            ...DEFAULT_TYPES.filter(t => !savedIds.has(t.id)),
+          ];
+          const orderedSubstances = [
+            ...(saved.types ?? [])
+              .filter(t => SUBSTANCE_TYPES.some(s => s.id === t.id))
+              .map(t => ({ ...SUBSTANCE_TYPES.find(s => s.id === t.id)!, hidden: t.hidden })),
+            ...SUBSTANCE_TYPES.filter(t => !savedIds.has(t.id)),
+          ];
 
           // Migrate plan entries: convert legacy offsetMinutes → targetTime
           const nowMs = Date.now();
@@ -307,7 +396,7 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
             payload: {
               ...INITIAL_STATE,
               ...saved,
-              types: [...DEFAULT_TYPES, ...customTypes],
+              types: [...orderedBuiltIns, ...orderedSubstances, ...customTypes],
               plans: migratedPlans.length > 0 ? migratedPlans : INITIAL_STATE.plans,
             },
           });
@@ -315,6 +404,8 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
           // Corrupted storage — fall back to defaults silently
         }
       }
+      // Clean up stale stopwatches immediately on launch, before rendering
+      dispatch({ type: 'CLEANUP_STALE', payload: Date.now() });
       setHydrated(true);
     });
   }, []);
@@ -325,12 +416,12 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   }, [state, hydrated]);
 
-  // Auto-cleanup: stop stopwatches done >24h ago
+  // Auto-cleanup: remove stopwatches done >24h ago, checked every minute
   useEffect(() => {
     if (!hydrated) return;
     const id = setInterval(() => {
       dispatch({ type: 'CLEANUP_STALE', payload: Date.now() });
-    }, 60_000); // check every minute
+    }, 60_000);
     return () => clearInterval(id);
   }, [hydrated]);
 
@@ -386,6 +477,22 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_FAVORITE', payload: typeId });
   }, []);
 
+  const reorderTypes = useCallback((ids: string[]) => {
+    dispatch({ type: 'REORDER_TYPES', payload: ids });
+  }, []);
+
+  const hideType = useCallback((id: string) => {
+    dispatch({ type: 'HIDE_TYPE', payload: id });
+  }, []);
+
+  const unhideType = useCallback((id: string) => {
+    dispatch({ type: 'UNHIDE_TYPE', payload: id });
+  }, []);
+
+  const toggleInteractionWarnings = useCallback(() => {
+    dispatch({ type: 'TOGGLE_INTERACTION_WARNINGS' });
+  }, []);
+
   const addPlan = useCallback((name: string) => {
     dispatch({ type: 'ADD_PLAN', payload: { id: genId(), name, entries: [] } });
   }, []);
@@ -420,7 +527,7 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
       state,
       startStopwatch, stopStopwatch, pauseStopwatch, resumeStopwatch, updateStopwatchStartTime,
       addType, updateType, deleteType, getTypeById, evaluateSum,
-      toggleFavorite,
+      toggleFavorite, reorderTypes, hideType, unhideType, toggleInteractionWarnings,
       addPlan, renamePlan, deletePlan,
       addPlanEntry, removePlanEntry, updatePlanEntry,
     }}>

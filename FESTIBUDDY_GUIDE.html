@@ -395,6 +395,9 @@
       <li><a href="#graph">4.2 Graph</a></li>
       <li><a href="#types-screen">4.3 Types</a></li>
       <li><a href="#plan-mode">4.4 Plan Mode</a></li>
+      <li><a href="#substances">4.5 Substances</a></li>
+      <li><a href="#interactions">4.6 Drug Interactions</a></li>
+      <li><a href="#settings">4.7 Settings</a></li>
       <li class="section"><a href="#plans">Deep Dives</a></li>
       <li><a href="#plans">5. Working with Plans</a></li>
       <li><a href="#custom">6. Custom Types</a></li>
@@ -411,7 +414,7 @@
       <h1>Festi<span>Bud</span></h1>
       <p style="color:var(--sub); font-size:16px;">User Guide &amp; Product Documentation</p>
       <div class="meta-pills">
-        <span class="pill">v1.1</span>
+        <span class="pill">v1.2</span>
         <span class="pill">iOS / Android</span>
         <span class="pill">React Native + Expo</span>
         <span class="pill">Fully offline</span>
@@ -571,6 +574,19 @@
         <p style="color:var(--sub); font-size:13px;">Slow onset reaching only 25% after 30 min, sustained plateau, long fade. Full cycle 5 hours.</p>
       </div>
 
+      <h3>Substance types</h3>
+      <p>A third category — <strong>substance types</strong> — ships bundled with the app. These are read-only profiles derived from PsychonautWiki pharmacokinetic data (oral ROA midpoints unless otherwise noted). They behave like built-in types in that they cannot be deleted or edited, but they are displayed separately under a <strong>Substances</strong> section in both the Types screen and the Add Stopwatch sheet.</p>
+      <p>The 16 bundled substances are:</p>
+      <ul>
+        <li><strong>Empathogens:</strong> MDMA, MDA</li>
+        <li><strong>Psychedelics:</strong> LSD, Psilocybin, 2C-B, Mescaline, DMT (smoked)</li>
+        <li><strong>Dissociatives:</strong> Ketamine</li>
+        <li><strong>Depressants:</strong> Alcohol (1 drink), GHB</li>
+        <li><strong>Stimulants:</strong> Cocaine, Amphetamine, Caffeine, Nicotine (smoked)</li>
+        <li><strong>Cannabis:</strong> Cannabis (smoked), Cannabis (edible)</li>
+      </ul>
+      <p>Substance types are never stored in AsyncStorage — they are always merged from code at hydration time so that bundled data updates automatically when the app is updated.</p>
+
       <h3>Custom types</h3>
       <p>Custom types appear <strong>above</strong> built-in types in the Types screen and can be edited or deleted at any time. Create one from scratch via the editor, or tap <strong>Customize</strong> on any built-in to duplicate it.</p>
     </section>
@@ -603,7 +619,8 @@
       <p>Every minute, FestiBud removes any stopwatch whose curve has fully completed (reached the end of its offset phase) more than <strong>24 hours ago</strong>. This runs automatically in the background — no manual action needed.</p>
 
       <h4>Starting a stopwatch</h4>
-      <p>Tap the <strong>+ FAB</strong> at the bottom. A bottom sheet appears with all types, <strong>favorites first</strong>. Tap <strong>▶ Start</strong> to launch an instance and close the sheet.</p>
+      <p>Tap the <strong>+ FAB</strong> at the bottom. A bottom sheet appears with all types, <strong>favorites first</strong>, followed by general types and a <strong>Substances</strong> section at the bottom. Tap <strong>▶ Start</strong> to launch an instance and close the sheet. Each substance row also shows a <strong>↗</strong> button that opens the substance's PsychonautWiki article in the system browser without closing the sheet.</p>
+      <p>When starting a <strong>substance type</strong> while other substance stopwatches are already running, FestiBud checks for known drug interactions. If any are found and Interaction Warnings are enabled in Settings, a modal appears listing the interaction pairs with severity badges before the stopwatch starts. You can <strong>Start anyway</strong> or <strong>Cancel</strong> to go back to the sheet.</p>
     </section>
 
     <section id="graph">
@@ -638,16 +655,22 @@
 
     <section id="types-screen">
       <h2><span class="sec-num">4.3</span> Types Screen</h2>
-      <p>Manage your stopwatch type library. Two sections: <strong>Custom</strong> (your types, shown first) and <strong>Built-in</strong> (the two presets).</p>
+      <p>Manage your stopwatch type library. Sections: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. Types you've hidden appear in a collapsible <strong>Hidden</strong> section at the bottom.</p>
 
       <h4>Type cards</h4>
-      <p>Each card shows the type name, total duration, peak value, a mini sparkline curve preview, a four-phase breakdown table, and a segmented proportion bar. Action buttons:</p>
+      <p>Each card shows the type name, a mini sparkline curve preview, total duration, a four-phase breakdown table (duration and proportion per phase), and a segmented proportion bar. Action buttons:</p>
       <ul>
-        <li><strong>▶ Start</strong> — starts an instance directly from this screen</li>
+        <li><strong>▶ Start</strong> — starts an instance directly from this screen. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first.</li>
         <li><strong>Customize / Edit</strong> — opens the type editor</li>
+        <li><strong>Hide</strong> — moves the type card to the collapsible Hidden section at the bottom of the screen. The type still works normally; it just de-clutters the main list.</li>
         <li><strong>✕</strong> — deletes the type (custom only; confirmation required)</li>
         <li><strong>★ / ☆</strong> — toggles favorite. Favorited types appear first in the add-stopwatch sheet.</li>
+        <li><strong>↗</strong> — (substance types only) opens the substance's PsychonautWiki article in the system browser.</li>
       </ul>
+      <p>If any instances of a type are currently running, a small count badge (pill in the type's color) appears next to the name.</p>
+
+      <h4>Hiding a type</h4>
+      <p>Tap <strong>Hide</strong> on any type card to remove it from its section without deleting it. The type keeps all its settings and can still be started from the Add Stopwatch sheet. A collapsible <strong>Hidden (n)</strong> section appears at the bottom of the Types screen. Expand it to see all hidden types; each card shows an <strong>Unhide</strong> button that returns the type to its original section. Hidden state is persisted in AsyncStorage.</p>
     </section>
 
     <section id="plan-mode">
@@ -672,7 +695,112 @@
       <h4>Plan entries</h4>
       <p>Each entry has a type, a human-readable time offset from now (e.g. "+2h 15m", "−30m", "now"), an <strong>Edit</strong> button (opens the time editor), and a <strong>✕</strong> delete button.</p>
       <p>Tap the <strong>+ FAB</strong> to add a new entry: pick a type, set the timing using any of the three anchor modes (Start at, Peak at, Comedown), tap <strong>Add Entry</strong>. The same modes are available when editing an existing entry.</p>
+      <p>When adding a <strong>substance type</strong> that would interact with substances already in the plan, an interaction warning popup appears (if warnings are enabled) before the entry is committed. Tap <strong>Add anyway</strong> to proceed or <strong>Cancel</strong> to discard.</p>
       <p>Entries store an <strong>absolute target time</strong>, so a plan created today can include entries scheduled for tomorrow or later without any time drift.</p>
+
+      <h4>Persistent interaction warnings</h4>
+      <p>Below the entry list, FestiBud shows a persistent <strong>Interactions</strong> panel listing all known interaction pairs between substance entries currently in the plan — sorted by severity (Dangerous first). Each row shows a severity badge and the two substance names; tap a row to expand the clinical note. This panel only appears when Interaction Warnings are enabled in Settings and the plan contains at least two interacting substances.</p>
+    </section>
+
+    <!-- ── 4.5 Substances ── -->
+    <section id="substances">
+      <h2><span class="sec-num">4.5</span> Substance Database</h2>
+      <p>The Types screen has a third section — <strong>Substances</strong> — showing the 16 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
+
+      <h4>PK data quality</h4>
+      <p>All durations are population midpoints sourced from <strong>PsychonautWiki</strong> and cross-referenced with TripSit. They represent typical oral ROA timings (exceptions: DMT is smoked, Ketamine is intranasal, Cocaine is insufflated, Nicotine is smoked, Cannabis smoked vs. edible are separate profiles). Individual responses vary significantly with dose, bodyweight, tolerance, and metabolism.</p>
+
+      <table>
+        <thead><tr><th>Substance</th><th>Total duration (approx.)</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td>MDMA</td><td>4.4h</td><td>Oral; empathogenic peak ~1.75h</td></tr>
+          <tr><td>MDA</td><td>6.9h</td><td>Oral; longer and more psychedelic than MDMA</td></tr>
+          <tr><td>LSD</td><td>11.8h</td><td>Oral; very long peak plateau</td></tr>
+          <tr><td>Psilocybin</td><td>5.6h</td><td>Oral; classic psychedelic arc</td></tr>
+          <tr><td>2C-B</td><td>5.4h</td><td>Oral; visual psychedelic</td></tr>
+          <tr><td>Mescaline</td><td>12h</td><td>Oral; slowest onset of the psychedelics</td></tr>
+          <tr><td>DMT (smoked)</td><td>22 min</td><td>Inhaled; very short, intense</td></tr>
+          <tr><td>Ketamine</td><td>2h</td><td>Intranasal; dissociative</td></tr>
+          <tr><td>Alcohol (1 drink)</td><td>2.5h</td><td>Oral; single-standard-drink model</td></tr>
+          <tr><td>GHB</td><td>3.5h</td><td>Oral; steep onset, abrupt offset</td></tr>
+          <tr><td>Cocaine</td><td>1.5h</td><td>Insufflated; sharp peak, fast comedown</td></tr>
+          <tr><td>Amphetamine</td><td>8.5h</td><td>Oral; long stimulant duration</td></tr>
+          <tr><td>Caffeine</td><td>7h</td><td>Oral; gentle rise, long plateau</td></tr>
+          <tr><td>Nicotine (smoked)</td><td>1.3h</td><td>Inhaled; rapid onset and short duration</td></tr>
+          <tr><td>Cannabis (smoked)</td><td>2.8h</td><td>Inhaled; fast onset</td></tr>
+          <tr><td>Cannabis (edible)</td><td>6.5h</td><td>Oral; delayed and prolonged onset</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 4.6 Drug Interactions ── -->
+    <section id="interactions">
+      <h2><span class="sec-num">4.6</span> Drug Interactions</h2>
+      <p>FestiBud bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, FestiBud warns you before you commit — either at stopwatch start or plan entry add.</p>
+
+      <h4>Severity levels</h4>
+      <table>
+        <thead><tr><th>Status</th><th>Color</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><strong>☠ Dangerous</strong></td><td style="color:#FF3B30;">Red</td><td>Life-threatening risk. Avoid. (e.g. Alcohol + GHB, GHB + Ketamine)</td></tr>
+          <tr><td><strong>⚠ Unsafe</strong></td><td style="color:#FF9500;">Orange</td><td>Significant risk of serious harm. (e.g. GHB + MDMA, Amphetamine + Cocaine)</td></tr>
+          <tr><td><strong>⚡ Caution</strong></td><td style="color:#FFCC00;">Yellow</td><td>Unpredictable interaction; use care. (e.g. Alcohol + Cocaine)</td></tr>
+          <tr><td><strong>↓ Low Risk &amp; Decrease</strong></td><td style="color:#34C759;">Green</td><td>Generally manageable; one substance reduces the other's effects.</td></tr>
+          <tr><td><strong>✦ Low Risk &amp; Synergy</strong></td><td style="color:#34C759;">Green</td><td>Generally manageable; effects combine in a predictable way.</td></tr>
+          <tr><td><strong>• Low Risk &amp; No Synergy</strong></td><td style="color:#34C759;">Green</td><td>Minimal interaction expected.</td></tr>
+        </tbody>
+      </table>
+
+      <h4>Warning popup</h4>
+      <p>When you tap <strong>▶ Start</strong> on a substance that interacts with a currently active substance stopwatch, or when you tap <strong>Add Entry</strong> in Plan Mode with a substance that interacts with entries already in the plan, a blocking modal appears showing:</p>
+      <ul>
+        <li>The interaction pairs (sorted by severity, most severe first)</li>
+        <li>A severity badge per pair</li>
+        <li>The two substance names</li>
+        <li>An expandable clinical note (tap a row to reveal)</li>
+      </ul>
+      <p>Two buttons: <strong>Cancel</strong> (go back without starting/adding) and <strong>Start anyway</strong> / <strong>Add anyway</strong> (proceed).</p>
+      <p>The popup only appears when <strong>Interaction Warnings</strong> is enabled in Settings (on by default). Disable it there to suppress all interaction popups and persistent panels.</p>
+
+      <div class="callout">Interaction data covers substance-to-substance risks only between the 16 bundled profiles. Interactions with unlisted substances or user-created custom types are not checked.</div>
+    </section>
+
+    <!-- ── 4.7 Settings ── -->
+    <section id="settings">
+      <h2><span class="sec-num">4.7</span> Settings</h2>
+      <p>Accessed via the gear icon tab. Contains app-wide preferences and attribution.</p>
+
+      <h4>Appearance</h4>
+      <ul>
+        <li><strong>Color Scheme</strong> — a three-way segmented control: <strong>System</strong> (default, follows iOS/Android), <strong>Light</strong>, or <strong>Dark</strong>. The selection is saved immediately to AsyncStorage and applied across all screens — including the tab bar, graph, interaction modals, and all card backgrounds. Graph axis/grid colors, label contrast, and the tab bar background all adapt automatically.</li>
+      </ul>
+
+      <h4>Harm Reduction</h4>
+      <ul>
+        <li><strong>Interaction Warnings</strong> — toggle (on by default). When enabled, FestiBud shows warning popups before starting a substance stopwatch or adding a substance plan entry that creates a known interaction, and renders the persistent interactions panel in Plan Mode. Disable to remove all interaction UI.</li>
+      </ul>
+
+      <h4>About</h4>
+      <p>Attribution rows showing the data sources used in the bundled substance database. The first two rows are tappable links that open in the system browser:</p>
+      <ul>
+        <li><strong>PK data source — PsychonautWiki ↗</strong> — opens <code>https://psychonautwiki.org</code></li>
+        <li><strong>Interaction data — TripSit combos ↗</strong> — opens <code>https://tripsit.me</code></li>
+        <li><strong>Substances</strong> — 16 bundled profiles</li>
+        <li><strong>Privacy &amp; disclosure — View ↗</strong> — opens the Disclosure screen (see below)</li>
+      </ul>
+
+      <h4>Disclosure screen</h4>
+      <p>A full-screen page sheet summarising FestiBud's privacy stance and harm reduction context. It contains three cards:</p>
+      <ul>
+        <li><strong>100% offline · no data leaves your device</strong> — confirms that everything is stored locally and nothing is transmitted externally.</li>
+        <li><strong>For harm reduction reference only</strong> — explains that PK data are population midpoints, individual responses vary significantly, and the app is not medical advice.</li>
+        <li><strong>Interaction warnings</strong> — explains the TripSit-sourced interaction data and notes that the absence of a warning does not imply safety.</li>
+      </ul>
+      <p><strong>First launch:</strong> the Disclosure screen appears automatically on the first time the app is opened. A <strong>Don't show again</strong> checkbox (checked by default) is shown above the <strong>Continue</strong> button. If left checked, a flag is written to AsyncStorage and the screen will not appear automatically on subsequent launches. Unchecking it and tapping Continue dismisses the screen without writing the flag, so it will appear again next launch.</p>
+      <p>The screen can always be reopened via <strong>Settings → Privacy &amp; disclosure → View ↗</strong>. In this context the checkbox is absent; a small <strong>Show on next launch</strong> link at the bottom clears the suppression flag so the screen will reappear automatically on the next cold start.</p>
+
+      <h4>Disclaimer</h4>
+      <p>A reminder that FestiBud provides pharmacokinetic reference data for harm reduction purposes only — duration estimates are population midpoints, individual responses vary, and a medical professional should be consulted if in doubt.</p>
     </section>
 
     <!-- ── 5. Working with Plans ── -->
@@ -777,10 +905,12 @@
 <span class="file">├── TypeEditorModal.tsx       </span><span class="comment">— Type create/edit form</span>
 <span class="file">├── AddStopwatchModal.tsx     </span><span class="comment">— Bottom sheet: start a stopwatch</span>
 <span class="file">├── EditStopwatchStartModal.tsx</span><span class="comment">— Bottom sheet: edit running stopwatch start time</span>
-<span class="file">├── AddPlanEntryModal.tsx     </span><span class="comment">— Bottom sheet: add plan entry</span>
-<span class="file">├── EditPlanEntryModal.tsx    </span><span class="comment">— Bottom sheet: edit entry time</span>
-<span class="file">├── PlanEntryEditor.tsx       </span><span class="comment">— Shared editor UI for plan entry timing (all three anchor modes)</span>
-<span class="file">└── TimePickers.tsx           </span><span class="comment">— HH:MM clock picker and minute-adjustment controls</span>
+<span class="file">├── AddPlanEntryModal.tsx      </span><span class="comment">— Bottom sheet: add plan entry</span>
+<span class="file">├── EditPlanEntryModal.tsx     </span><span class="comment">— Bottom sheet: edit entry time</span>
+<span class="file">├── PlanEntryEditor.tsx        </span><span class="comment">— Shared editor UI for plan entry timing (all three anchor modes)</span>
+<span class="file">├── TimePickers.tsx            </span><span class="comment">— HH:MM clock picker and minute-adjustment controls</span>
+<span class="file">├── InteractionWarningModal.tsx</span><span class="comment">— Blocking popup for drug interaction warnings (start / add flows)</span>
+<span class="file">└── InteractionWarnings.tsx    </span><span class="comment">— Persistent warnings panel (rendered in Plan Mode)</span>
 
 <span class="dir">engine/</span>
 <span class="file">└── curveEngine.ts       </span><span class="comment">— Core math: evaluate, phase helpers, inverse solvers</span>
@@ -789,25 +919,61 @@
 <span class="file">└── StopwatchContext.tsx </span><span class="comment">— React Context + useReducer (all state)</span>
 
 <span class="dir">types/</span>
-<span class="file">└── models.ts            </span><span class="comment">— TypeScript interfaces</span>
+<span class="file">└── models.ts            </span><span class="comment">— TypeScript interfaces (StopwatchType, ActiveStopwatch, Plan, PlannedEntry)</span>
 
 <span class="dir">utils/</span>
 <span class="file">└── formatOffset.ts      </span><span class="comment">— Human-readable duration strings for plan offsets</span>
 
 <span class="dir">constants/</span>
 <span class="file">├── defaultTypes.ts      </span><span class="comment">— Built-in types + color palette</span>
+<span class="file">├── substanceDB.ts       </span><span class="comment">— 16 bundled substance types (PK data from PsychonautWiki)</span>
+<span class="file">├── interactions.ts      </span><span class="comment">— TripSit-based interaction pairs; getActiveInteractions, INTERACTION_COLOR, INTERACTION_SEVERITY</span>
 <span class="file">└── theme.ts             </span><span class="comment">— Color tokens</span>
       </div>
 
       <h3>State model</h3>
       <p>All state lives in a single <code>AppState</code> managed by <code>useReducer</code>:</p>
       <pre><code>interface AppState {
-  types:              StopwatchType[];      // all type definitions
-  activeStopwatches:  ActiveStopwatch[];    // running instances
-  favoriteTypeIds:    string[];             // ordered favorite IDs
-  plans:              Plan[];              // plan mode plans
+  types:                   StopwatchType[];   // all type definitions (built-in + substance + custom)
+  activeStopwatches:       ActiveStopwatch[]; // running instances
+  favoriteTypeIds:         string[];          // ordered favorite IDs
+  plans:                   Plan[];            // plan mode plans
+  showInteractionWarnings: boolean;           // toggle for interaction warning UI (default: true)
 }</code></pre>
-      <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types are always restored from code; custom types are merged from storage.</div>
+      <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types (<code>isBuiltIn: true</code>) and substance types (<code>isSubstance: true</code>) are always restored from code at hydration and are never saved to AsyncStorage — only custom types are merged from storage. This means bundled data updates automatically when the app version is updated.</div>
+
+      <h3>StopwatchType flags</h3>
+      <table>
+        <thead><tr><th>Flag</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><code>isBuiltIn?: true</code></td><td>Cannot be deleted or edited in the UI. Quick and Extended presets, plus all substance types, carry this flag.</td></tr>
+          <tr><td><code>isSubstance?: true</code></td><td>Part of the bundled harm-reduction substance database. Shown in a separate "Substances" section. Implies <code>isBuiltIn</code>. Used to identify substance pairs for interaction checks.</td></tr>
+        </tbody>
+      </table>
+
+      <h3>Interaction system</h3>
+      <p><code>constants/interactions.ts</code> exports three key utilities:</p>
+      <table>
+        <thead><tr><th>Export</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>getInteraction(idA, idB)</code></td><td>Returns <code>Interaction | undefined</code> for a specific pair (key is sorted IDs joined with <code>+</code>).</td></tr>
+          <tr><td><code>getActiveInteractions(ids[])</code></td><td>Returns all pairs with a known interaction from the provided list of substance IDs. Used by the warning popup and the persistent plan panel.</td></tr>
+          <tr><td><code>INTERACTION_COLOR</code></td><td>Maps each <code>InteractionStatus</code> to a hex color string for badge rendering.</td></tr>
+          <tr><td><code>INTERACTION_SEVERITY</code></td><td>Maps each status to a numeric rank (0 = most severe) for sort order.</td></tr>
+        </tbody>
+      </table>
+      <pre><code>type InteractionStatus =
+  | 'Dangerous'
+  | 'Unsafe'
+  | 'Caution'
+  | 'Low Risk & No Synergy'
+  | 'Low Risk & Decrease'
+  | 'Low Risk & Synergy';
+
+interface Interaction {
+  status: InteractionStatus;
+  note:   string; // clinical summary shown in expanded rows
+}</code></pre>
 
       <h3>Curve engine — key exports</h3>
       <table>
@@ -840,7 +1006,7 @@ interface PlanMarker {
   label:     string;  // e.g. "Festival · Extended"
   color:     string;  // CSS/RN color string
 }</code></pre>
-      <p>Paths are built from 300 sample points, split at "now" into solid (past) and dashed (future) SVG <code>&lt;Path&gt;</code> elements.</p>
+      <p>Paths are built from 150 sample points, split at "now" into solid (past) and dashed (future) SVG <code>&lt;Path&gt;</code> elements.</p>
 
       <h3>PlannedEntry model</h3>
       <p>Plan entries store an <strong>absolute timestamp</strong> rather than a relative offset:</p>
@@ -869,23 +1035,17 @@ interface PlanMarker {
       <ol style="display:flex; flex-direction:column; gap:10px; margin:16px 0; padding-left:0; list-style:none;">
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">1</span>
-          <div><strong>Substance database</strong><p>Built-in read-only library of widely used substances with pharmacokinetic data, bundled statically in the app (no runtime API calls — fully offline). Data sources: <strong>PsychonautWiki GraphQL API</strong> (onset, comeup, peak, offset durations per route of administration) merged with <strong>TripSit <code>combos.json</code></strong> (interaction pairs and severity). Duration ranges from PsychonautWiki are string values (e.g. "30–60 minutes") — midpoints are used as default curve parameters, which users can override via the type editor. Interaction severity levels map directly to TripSit's: Dangerous / Unsafe / Caution / Low Risk.</p></div>
+          <div><strong>iOS App Store release</strong><p>Submit to App Store under Health &amp; Fitness, age rating 17+. Prepare screenshots, metadata, and privacy disclosure (no data leaves the device). See Section 9 for submission strategy.</p></div>
         </li>
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">2</span>
-          <div><strong>Graph zoom and pan are not working smoothly</strong><p>Should be fixed</p></div>
+          <div><strong>Notifications</strong><p>Notify the user when a plan entry's scheduled start time arrives. No phase-transition or threshold notifications. Opt-out available in Settings.</p></div>
         </li>
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">3</span>
-          <div><strong>Interaction warnings</strong><p>When multiple substances are active or planned, surface known interaction pairs with severity (Dangerous / Caution / Low Risk / Synergy) and a brief clinical mechanism note. Warnings are ON by default; users can opt out in settings.</p></div>
-        </li>
-        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
-          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">4</span>
-          <div><strong>Settings screen</strong><p>A dedicated settings screen for user preferences. Initial scope: opt-out toggle for interaction warnings, notification permissions and preferences (plan start-time alerts).</p></div>
+          <div><strong>Merge Stopwatches + Graph into one screen; promote Plan Mode to a tab</strong><p>Currently the graph lives on a separate tab and Plan Mode is a pushed stack screen. Consider collapsing Stopwatches and Graph into a single scrollable or split view, and giving Plan Mode its own permanent tab — reducing navigation depth and making planning a first-class destination.</p></div>
         </li>
       </ol>
-
-      <h3>Current limitations</h3>
       <div class="limit-list">
         <div class="limit-item">
           <strong>No history</strong>
@@ -907,11 +1067,23 @@ interface PlanMarker {
           <strong>Type library sync</strong>
           <p>Backup and restore custom types across devices.</p>
         </div>
+        <div class="roadmap-item">
+          <strong>Emergency numbers by country</strong>
+          <p>A dedicated screen showing the relevant emergency and poison-control numbers for your country. Searchable/filterable country dropdown. Numbers open the phone dialer directly. Intended as a quick-access safety reference — not a replacement for calling emergency services.</p>
+        </div>
+        <div class="roadmap-item">
+          <strong>Reagent testing guide</strong>
+          <p>Per-substance reference showing which reagents to use (Marquis, Mecke, Simon's, etc.) and the expected color reactions for a positive result. Helps users verify substance identity before consumption. Sourced from published harm-reduction references (DanceSafe, Reagent.co.uk).</p>
+        </div>
+        <div class="roadmap-item">
+          <strong>Drag-to-reorder types</strong>
+          <p>Allow users to reorder stopwatch types within each section (Custom, Built-in, Substances) via drag handles. Order is persisted across sessions. Currently disabled pending a reliable cross-session implementation.</p>
+        </div>
       </div>
     </section>
 
     <footer>
-      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.1 &nbsp;·&nbsp; June 2026
+      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.2 &nbsp;·&nbsp; June 2026
     </footer>
 
   </main>

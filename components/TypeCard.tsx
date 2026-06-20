@@ -1,18 +1,30 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { evaluate, formatDuration, totalDuration } from '@/engine/curveEngine';
 import type { StopwatchType } from '@/types/models';
 import Svg, { Path, Line } from 'react-native-svg';
+
+/** Derive the PsychonautWiki article URL from a substance name. */
+function psychonautWikiUrl(name: string): string {
+  const slug = name.replace(/\s*\(.*?\)\s*/g, '').trim();
+  return `https://psychonautwiki.org/wiki/${encodeURIComponent(slug)}`;
+}
 
 interface Props {
   type: StopwatchType;
   isDark: boolean;
   isFavorite: boolean;
+  activeCount: number;
+  dragHandle?: React.ReactNode;
   onStart: (typeId: string) => void;
   /** Called for both "Customize" (built-in) and "Edit" (custom) */
   onEdit: (type: StopwatchType) => void;
   onDelete?: (type: StopwatchType) => void;
   onToggleFavorite: (typeId: string) => void;
+  onHide?: (typeId: string) => void;
+  /** Label shown on the hide button. Defaults to "Hide". Pass "Unhide" for the hidden section. */
+  hideLabel?: string;
 }
 
 /** Sparkline preview of f(t) for a single type */
@@ -44,17 +56,13 @@ function MiniCurve({ type }: { type: StopwatchType }) {
   );
 }
 
-export function TypeCard({ type, isDark, isFavorite, onStart, onEdit, onDelete, onToggleFavorite }: Props) {
+export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, onStart, onEdit, onDelete, onToggleFavorite, onHide, hideLabel = 'Hide' }: Props) {
   const textColor = isDark ? '#ECEDEE' : '#11181C';
   const subColor  = isDark ? '#9BA1A6' : '#687076';
   const cardBg    = isDark ? '#1E2022' : '#F5F5F7';
   const border    = isDark ? '#2A2D2F' : '#E5E5EA';
 
   const total = totalDuration(type);
-  const onsetPct  = Math.round((type.onsetDuration  / total) * 100);
-  const comeupPct = Math.round((type.comeupDuration / total) * 100);
-  const peakPct   = Math.round((type.peakDuration   / total) * 100);
-  const offsetPct = 100 - onsetPct - comeupPct - peakPct;
 
   return (
     <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
@@ -65,9 +73,16 @@ export function TypeCard({ type, isDark, isFavorite, onStart, onEdit, onDelete, 
         {/* Name + duration */}
         <View style={styles.topRow}>
           <View style={styles.nameBlock}>
-            <Text style={[styles.name, { color: textColor }]}>{type.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={[styles.name, { color: textColor }]}>{type.name}</Text>
+              {activeCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: type.color }]}>
+                  <Text style={styles.badgeText}>{activeCount}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.totalDur, { color: subColor }]}>
-              {formatDuration(total)} total · peak {type.peakValue}
+              {formatDuration(total)} total
             </Text>
           </View>
 
@@ -87,31 +102,15 @@ export function TypeCard({ type, isDark, isFavorite, onStart, onEdit, onDelete, 
         {/* Phase breakdown */}
         <View style={styles.phases}>
           {[
-            { label: 'Onset',  dur: type.onsetDuration,  pct: onsetPct  },
-            { label: 'Comeup', dur: type.comeupDuration, pct: comeupPct },
-            { label: 'Peak',   dur: type.peakDuration,   pct: peakPct   },
-            { label: 'Offset', dur: type.offsetDuration, pct: offsetPct },
-          ].map(({ label, dur, pct }) => (
+            { label: 'Onset',  dur: type.onsetDuration  },
+            { label: 'Comeup', dur: type.comeupDuration },
+            { label: 'Peak',   dur: type.peakDuration   },
+            { label: 'Offset', dur: type.offsetDuration },
+          ].map(({ label, dur }) => (
             <View key={label} style={styles.phaseItem}>
               <Text style={[styles.phaseLabel, { color: subColor }]}>{label}</Text>
               <Text style={[styles.phaseDur, { color: textColor }]}>{formatDuration(dur)}</Text>
-              <Text style={[styles.phasePct, { color: subColor }]}>{pct}%</Text>
             </View>
-          ))}
-        </View>
-
-        {/* Segmented bar */}
-        <View style={styles.bar}>
-          {[
-            { pct: onsetPct,  opacity: 0.35 },
-            { pct: comeupPct, opacity: 0.6  },
-            { pct: peakPct,   opacity: 1.0  },
-            { pct: offsetPct, opacity: 0.5  },
-          ].map(({ pct, opacity }, i) => (
-            <View
-              key={i}
-              style={{ width: `${pct}%`, height: '100%', backgroundColor: type.color, opacity }}
-            />
           ))}
         </View>
 
@@ -119,7 +118,10 @@ export function TypeCard({ type, isDark, isFavorite, onStart, onEdit, onDelete, 
         <View style={styles.actions}>
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: type.color }]}
-            onPress={() => onStart(type.id)}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              onStart(type.id);
+            }}
             activeOpacity={0.8}
           >
             <Text style={styles.startText}>▶  Start</Text>
@@ -135,6 +137,26 @@ export function TypeCard({ type, isDark, isFavorite, onStart, onEdit, onDelete, 
             </Text>
           </TouchableOpacity>
 
+          {type.isSubstance && (
+            <TouchableOpacity
+              style={styles.wikiBtn}
+              onPress={() => Linking.openURL(psychonautWikiUrl(type.name))}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.wikiText, { color: subColor }]}>ⓘ</Text>
+            </TouchableOpacity>
+          )}
+
+          {onHide && (
+            <TouchableOpacity
+              style={styles.hideBtn}
+              onPress={() => onHide(type.id)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.hideText, { color: subColor }]}>{hideLabel}</Text>
+            </TouchableOpacity>
+          )}
+
           {!type.isBuiltIn && onDelete && (
             <TouchableOpacity
               style={styles.deleteBtn}
@@ -144,6 +166,7 @@ export function TypeCard({ type, isDark, isFavorite, onStart, onEdit, onDelete, 
               <Text style={[styles.deleteText, { color: subColor }]}>✕</Text>
             </TouchableOpacity>
           )}
+          {dragHandle}
         </View>
       </View>
     </View>
@@ -175,6 +198,25 @@ const styles = StyleSheet.create({
   nameBlock: {
     gap: 3,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 13,
+  },
   name: {
     fontSize: 17,
     fontWeight: '600',
@@ -198,16 +240,6 @@ const styles = StyleSheet.create({
   phaseDur: {
     fontSize: 12,
     fontWeight: '500',
-  },
-  phasePct: {
-    fontSize: 10,
-  },
-  bar: {
-    height: 5,
-    borderRadius: 3,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    backgroundColor: 'rgba(128,128,128,0.12)',
   },
   starBtn: {
     padding: 2,
@@ -241,6 +273,30 @@ const styles = StyleSheet.create({
   },
   secondaryText: {
     fontSize: 13,
+    fontWeight: '600',
+  },
+  wikiBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(128,128,128,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  wikiText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  hideBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(128,128,128,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hideText: {
+    fontSize: 12,
     fontWeight: '600',
   },
   deleteBtn: {

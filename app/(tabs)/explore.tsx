@@ -22,9 +22,7 @@ export default function GraphScreen() {
   const { state } = useStopwatch();
 
   const [now, setNow] = useState(Date.now);
-  // Which plan IDs are currently overlaid on the graph
   const [visiblePlanIds, setVisiblePlanIds] = useState<Set<string>>(new Set());
-  // Graph zoom/pan
   const graphRef = useRef<GraphRef>(null);
   const [isGraphPanned, setIsGraphPanned] = useState(false);
 
@@ -33,7 +31,6 @@ export default function GraphScreen() {
     return () => clearInterval(id);
   }, []);
 
-  // Time elapsed since the earliest running stopwatch started
   const earliestStart = state.activeStopwatches.length > 0
     ? Math.min(...state.activeStopwatches.map(sw => sw.startTime))
     : null;
@@ -55,7 +52,6 @@ export default function GraphScreen() {
     });
   }
 
-  // Build start-time markers for visible plans (no curves, just markers)
   const planMarkers: PlanMarker[] = [];
   for (const plan of state.plans) {
     if (!visiblePlanIds.has(plan.id)) continue;
@@ -72,72 +68,72 @@ export default function GraphScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.screenTitle, { color: subColor }]}>GRAPH</Text>
-          <Text style={[styles.sumValue, { color: textColor }]}>
-            {elapsedSinceFirst !== null ? formatElapsed(elapsedSinceFirst) : '--:--'}
-          </Text>
-          <Text style={[styles.sumLabel, { color: subColor }]}>elapsed</Text>
-        </View>
 
-        {/* Graph */}
-        <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Graph
-            ref={graphRef}
-            currentTime={now}
-            height={280}
-            colorScheme={colorScheme}
-            planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
-            onIsPanned={setIsGraphPanned}
-          />
+      {/* ── Header (fixed, not inside ScrollView) ── */}
+      <View style={styles.header}>
+        <Text style={[styles.screenTitle, { color: subColor }]}>GRAPH</Text>
+        <Text style={[styles.sumValue, { color: textColor }]}>
+          {elapsedSinceFirst !== null ? formatElapsed(elapsedSinceFirst) : '--:--'}
+        </Text>
+        <Text style={[styles.sumLabel, { color: subColor }]}>elapsed</Text>
+      </View>
 
-          {/* Back to Now button — appears when user has panned/zoomed */}
-          {isGraphPanned && (
-            <TouchableOpacity
-              style={[styles.backToNowBtn, { backgroundColor: isDark ? '#1E2022' : '#F0F0F0', borderColor: accent }]}
-              onPress={() => graphRef.current?.resetView()}
-            >
-              <Text style={[styles.backToNowText, { color: accent }]}>↩ Back to Now</Text>
-            </TouchableOpacity>
-          )}
+      {/* ── Graph card (fixed, not inside ScrollView — avoids UIScrollView conflict) ── */}
+      <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <Graph
+          ref={graphRef}
+          currentTime={now}
+          height={280}
+          colorScheme={colorScheme}
+          planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
+          onIsPanned={setIsGraphPanned}
+        />
 
-          {/* Legend */}
-          {state.activeStopwatches.length > 0 && (
-            <View style={[styles.legend, { borderTopColor: cardBorder }]}>
-              {/* Sum row */}
-              <View style={styles.legendRow}>
-                <View style={[styles.legendLine, { backgroundColor: Colors[colorScheme].tint }]} />
-                <Text style={[styles.legendLabel, { color: textColor }]}>Sum y(t)</Text>
-              </View>
+        {isGraphPanned && (
+          <TouchableOpacity
+            style={[styles.backToNowBtn, { backgroundColor: isDark ? '#1E2022' : '#F0F0F0', borderColor: accent }]}
+            onPress={() => graphRef.current?.resetView()}
+          >
+            <Text style={[styles.backToNowText, { color: accent }]}>↩ Back to Now</Text>
+          </TouchableOpacity>
+        )}
 
-              {/* Per-stopwatch rows — always Time mode */}
-              {state.activeStopwatches.map(sw => {
-                const type = state.types.find(t => t.id === sw.typeId);
-                if (!type) return null;
-                const elapsed = effectiveElapsed(sw, now);
-                const total = totalDuration(type);
-                const phase = currentPhase(type, elapsed);
-
-                return (
-                  <View key={sw.id} style={styles.legendRow}>
-                    <View style={[styles.legendLine, { backgroundColor: type.color }]} />
-                    <Text style={[styles.legendLabel, { color: subColor }]}>{type.name}</Text>
-                    <View style={[styles.phasePill, { borderColor: type.color }]}>
-                      <Text style={[styles.phaseText, { color: type.color }]}>{phase}</Text>
-                    </View>
-                    <Text style={[styles.legendValue, { color: subColor }]}>
-                      {formatElapsed(elapsed)} / {formatDuration(total)}
-                    </Text>
-                  </View>
-                );
-              })}
+        {state.activeStopwatches.length > 0 && (
+          <View style={[styles.legend, { borderTopColor: cardBorder }]}>
+            <View style={styles.legendRow}>
+              <View style={[styles.legendLine, { backgroundColor: Colors[colorScheme].tint }]} />
+              <Text style={[styles.legendLabel, { color: textColor }]}>Sum y(t)</Text>
             </View>
-          )}
-        </View>
 
-        {/* Plan visibility toggles */}
+            {state.activeStopwatches.map(sw => {
+              const type = state.types.find(t => t.id === sw.typeId);
+              if (!type) return null;
+              const elapsed = effectiveElapsed(sw, now);
+              const total = totalDuration(type);
+              const phase = currentPhase(type, elapsed);
+
+              return (
+                <View key={sw.id} style={styles.legendRow}>
+                  <View style={[styles.legendLine, { backgroundColor: type.color }]} />
+                  <Text style={[styles.legendLabel, { color: subColor }]}>{type.name}</Text>
+                  <View style={[styles.phasePill, { borderColor: type.color }]}>
+                    <Text style={[styles.phaseText, { color: type.color }]}>{phase}</Text>
+                  </View>
+                  <Text style={[styles.legendValue, { color: subColor }]}>
+                    {formatElapsed(elapsed)} / {formatDuration(total)}
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
+      </View>
+
+      {/* ── Scrollable area below the graph ── */}
+      <ScrollView
+        contentContainerStyle={styles.bottomContent}
+        showsVerticalScrollIndicator={false}
+      >
         {state.plans.length > 0 && (
           <View style={styles.planToggles}>
             <Text style={[styles.planTogglesLabel, { color: subColor }]}>Overlay plans</Text>
@@ -156,10 +152,7 @@ export default function GraphScreen() {
                     ]}
                     onPress={() => togglePlan(plan.id)}
                   >
-                    <Text style={[
-                      styles.planChipText,
-                      { color: isVisible ? '#fff' : subColor },
-                    ]}>
+                    <Text style={[styles.planChipText, { color: isVisible ? '#fff' : subColor }]}>
                       {isVisible ? '☑' : '☐'} {plan.name}
                     </Text>
                   </TouchableOpacity>
@@ -169,7 +162,6 @@ export default function GraphScreen() {
           </View>
         )}
 
-        {/* Plan Mode button */}
         <TouchableOpacity
           style={[styles.planBtn, { borderColor: accent }]}
           onPress={() => router.push('/plan')}
@@ -177,7 +169,6 @@ export default function GraphScreen() {
           <Text style={[styles.planBtnText, { color: accent }]}>Plan Mode</Text>
         </TouchableOpacity>
 
-        {/* Empty hint */}
         {state.activeStopwatches.length === 0 && (
           <View style={styles.hint}>
             <Text style={[styles.hintText, { color: subColor }]}>
@@ -189,15 +180,16 @@ export default function GraphScreen() {
           </View>
         )}
       </ScrollView>
+
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  scroll: { paddingBottom: 40 },
-  header: { alignItems: 'center', paddingTop: 20, paddingBottom: 20, gap: 4 },
-  screenTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 1.2, marginBottom: 6 },
+
+  header: { alignItems: 'center', paddingTop: 16, paddingBottom: 16, gap: 4 },
+  screenTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 1.2, marginBottom: 4 },
   sumValue: {
     fontSize: 52,
     fontWeight: '200',
@@ -206,6 +198,7 @@ const styles = StyleSheet.create({
     lineHeight: 58,
   },
   sumLabel: { fontSize: 13 },
+
   graphCard: {
     marginHorizontal: 12,
     borderRadius: 16,
@@ -226,7 +219,19 @@ const styles = StyleSheet.create({
   phaseText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
   legendValue: { flex: 1, fontSize: 12, fontVariant: ['tabular-nums'], fontWeight: '300', textAlign: 'right' },
 
-  // Plan visibility toggles
+  backToNowBtn: {
+    alignSelf: 'center',
+    marginTop: 6,
+    marginBottom: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  backToNowText: { fontSize: 13, fontWeight: '600' },
+
+  // Below-graph scrollable section
+  bottomContent: { paddingBottom: 40 },
   planToggles: { marginHorizontal: 12, marginTop: 12, gap: 8 },
   planTogglesLabel: {
     fontSize: 11,
@@ -245,17 +250,6 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   planChipText: { fontSize: 13, fontWeight: '500' },
-
-  backToNowBtn: {
-    alignSelf: 'center',
-    marginTop: 6,
-    marginBottom: 4,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  backToNowText: { fontSize: 13, fontWeight: '600' },
   planBtn: {
     alignSelf: 'center',
     marginTop: 12,

@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useCallback, useEffect } from 'react';
 import {
+  Linking,
   Modal,
   SectionList,
   StyleSheet,
@@ -7,7 +8,14 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+
+function psychonautWikiUrl(name: string): string {
+  const slug = name.replace(/\s*\(.*?\)\s*/g, '').trim();
+  return `https://psychonautwiki.org/wiki/${encodeURIComponent(slug)}`;
+}
 import { useStopwatch } from '@/store/StopwatchContext';
+import { InteractionWarningModal } from '@/components/InteractionWarningModal';
+import { useInteractionGuard } from '@/hooks/use-interaction-guard';
 import type { StopwatchType } from '@/types/models';
 import { formatDuration, totalDuration } from '@/engine/curveEngine';
 
@@ -37,7 +45,7 @@ function TypeRow({
       <View style={styles.rowInfo}>
         <Text style={[styles.rowName, { color: textColor }]}>{item.name}</Text>
         <Text style={[styles.rowMeta, { color: subColor }]}>
-          {formatDuration(totalDuration(item))} · peak {item.peakValue}
+          {formatDuration(totalDuration(item))}
         </Text>
       </View>
       <TouchableOpacity
@@ -46,33 +54,62 @@ function TypeRow({
       >
         <Text style={styles.startText}>▶ Start</Text>
       </TouchableOpacity>
+
+      {item.isSubstance && (
+        <TouchableOpacity
+          onPress={() => Linking.openURL(psychonautWikiUrl(item.name))}
+          hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+        >
+          <Text style={[styles.wikiLink, { color: subColor }]}>↗</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
 
 export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
-  const { state, startStopwatch } = useStopwatch();
+  const { state } = useStopwatch();
+  const { handleStart, pendingType, warningPairs, onConfirm, onCancel } =
+    useInteractionGuard();
+
+  // Clear pending warning whenever the sheet is closed externally
+  useEffect(() => {
+    if (!visible) onCancel();
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Start a type: close the sheet only if no interaction warning was triggered.
+  // If a warning was triggered, the sheet stays open and the warning modal appears on top.
+  const handleTypeStart = useCallback((type: StopwatchType) => {
+    const warned = handleStart(type.id);
+    if (!warned) onClose();
+  }, [handleStart, onClose]);
+
+  // Confirm from warning modal: start the timer, then close the sheet.
+  const handleConfirm = useCallback(() => {
+    onConfirm();
+    onClose();
+  }, [onConfirm, onClose]);
 
   const bgColor     = isDark ? '#111' : '#fff';
   const textColor   = isDark ? '#ECEDEE' : '#11181C';
   const subColor    = isDark ? '#9BA1A6' : '#687076';
   const handleColor = isDark ? '#444' : '#DDD';
 
-  function handleStart(type: StopwatchType) {
-    startStopwatch(type.id);
-    onClose();
-  }
+  const favIds = new Set(state.favoriteTypeIds ?? []);
 
-  const favIds = state.favoriteTypeIds ?? [];
-  const favorites   = state.types.filter(t => favIds.includes(t.id));
-  const nonFavorites = state.types.filter(t => !favIds.includes(t.id));
+  const favorites        = state.types.filter(t =>  favIds.has(t.id));
+  const nonFavNonSubst   = state.types.filter(t => !favIds.has(t.id) && !t.isSubstance);
+  const nonFavSubstances = state.types.filter(t => !favIds.has(t.id) &&  t.isSubstance);
 
   const sections = [
     ...(favorites.length > 0
       ? [{ title: 'Favorites', data: favorites }]
       : []),
-    ...(nonFavorites.length > 0
-      ? [{ title: favorites.length > 0 ? 'All Types' : '', data: nonFavorites }]
+    ...(nonFavNonSubst.length > 0
+      ? [{ title: favorites.length > 0 ? 'All Types' : '', data: nonFavNonSubst }]
+      : []),
+    ...(nonFavSubstances.length > 0
+      ? [{ title: 'Substances', data: nonFavSubstances }]
       : []),
   ];
 
@@ -103,10 +140,23 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
             ) : null
           }
           renderItem={({ item }) => (
-            <TypeRow item={item} isDark={isDark} onStart={handleStart} />
+            <TypeRow item={item} isDark={isDark} onStart={handleTypeStart} />
           )}
         />
       </View>
+
+      {/* Interaction warning — rendered as absoluteFill overlay inside this Modal
+          to avoid iOS's limitation of only one presented native Modal at a time. */}
+      <InteractionWarningModal
+        modal={false}
+        visible={pendingType !== null}
+        isDark={isDark}
+        newSubstanceName={pendingType?.name ?? ''}
+        pairs={warningPairs}
+        confirmLabel="Start anyway"
+        onConfirm={handleConfirm}
+        onCancel={onCancel}
+      />
     </Modal>
   );
 }
@@ -182,6 +232,10 @@ const styles = StyleSheet.create({
   startText: {
     color: '#fff',
     fontSize: 13,
+    fontWeight: '600',
+  },
+  wikiLink: {
+    fontSize: 16,
     fontWeight: '600',
   },
 });

@@ -53,6 +53,12 @@ export interface StopwatchType {
    * Implies isBuiltIn = true for all UI purposes.
    */
   isSubstance?: boolean;
+  /**
+   * When true, this type is hidden from its section in the Types screen and
+   * shown instead in a collapsible "Hidden" section at the bottom. The type
+   * remains fully functional — active stopwatches of this type keep running.
+   */
+  hidden?: boolean;
 }
 
 /**

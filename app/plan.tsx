@@ -15,9 +15,11 @@ import { useStopwatch } from '@/store/StopwatchContext';
 import { Graph } from '@/components/Graph';
 import { AddPlanEntryModal } from '@/components/AddPlanEntryModal';
 import { EditPlanEntryModal } from '@/components/EditPlanEntryModal';
+import { InteractionWarningModal, type WarningPair } from '@/components/InteractionWarningModal';
+import { getActiveInteractions, INTERACTION_COLOR, INTERACTION_SEVERITY, type InteractionStatus } from '@/constants/interactions';
 import { formatDuration, totalDuration } from '@/engine/curveEngine';
 import type { PlanMarker } from '@/components/Graph';
-import type { Plan, PlannedEntry } from '@/types/models';
+import type { Plan, PlannedEntry, StopwatchType } from '@/types/models';
 
 const TICK_MS = 2_000;
 
@@ -179,6 +181,56 @@ function EntryRow({
 }
 
 // ---------------------------------------------------------------------------
+// Persistent interaction warning row (for plan screen)
+// ---------------------------------------------------------------------------
+
+function PlanWarningRow({ pair, isDark }: { pair: WarningPair; isDark: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const color     = INTERACTION_COLOR[pair.interaction.status];
+  const noteBg    = isDark ? '#111' : '#F4F4F4';
+  const noteColor = isDark ? '#9BA1A6' : '#687076';
+  const textColor = isDark ? '#ECEDEE' : '#11181C';
+
+  function badge(status: InteractionStatus): string {
+    switch (status) {
+      case 'Dangerous':           return '☠ DANGEROUS';
+      case 'Unsafe':              return '⚠ UNSAFE';
+      case 'Caution':             return '⚡ CAUTION';
+      case 'Low Risk & Synergy':  return '✦ SYNERGY';
+      case 'Low Risk & Decrease': return '↓ DECREASE';
+      default:                    return '• LOW RISK';
+    }
+  }
+
+  return (
+    <TouchableOpacity
+      onPress={() => setExpanded(e => !e)}
+      activeOpacity={0.75}
+      style={[styles.warnRow, { borderLeftColor: color, backgroundColor: isDark ? '#1A1A1A' : '#FAFAFA' }]}
+    >
+      <View style={styles.warnHeader}>
+        <View style={styles.warnLeft}>
+          <Text style={[styles.warnBadge, { color, backgroundColor: color + '22' }]}>
+            {badge(pair.interaction.status)}
+          </Text>
+          <Text style={[styles.warnNames, { color: textColor }]}>
+            {pair.nameA} + {pair.nameB}
+          </Text>
+        </View>
+        <Text style={[styles.warnChevron, { color: noteColor }]}>{expanded ? '▲' : '▼'}</Text>
+      </View>
+      {expanded && (
+        <View style={[styles.warnNote, { backgroundColor: noteBg }]}>
+          <Text style={[styles.warnNoteText, { color: noteColor }]}>
+            {pair.interaction.note}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Rename dialog
 // ---------------------------------------------------------------------------
 
@@ -260,6 +312,10 @@ export default function PlanScreen() {
   const [editingEntry, setEditingEntry] = useState<PlannedEntry | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
 
+  // Pending entry waiting for interaction warning confirmation
+  const [pendingEntry, setPendingEntry] = useState<{ typeId: string; targetTime: number } | null>(null);
+  const [pendingWarningPairs, setPendingWarningPairs] = useState<WarningPair[]>([]);
+
   // Keep currentTime ticking
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(Date.now()), TICK_MS);
@@ -303,6 +359,23 @@ export default function PlanScreen() {
     };
   });
 
+  // Persistent interaction warnings: all pairs between substances in the current plan
+  const planSubstanceIds = [
+    ...new Set(
+      (selectedPlan?.entries ?? [])
+        .map(e => state.types.find(t => t.id === e.typeId))
+        .filter((t): t is StopwatchType => !!t?.isSubstance)
+        .map(t => t.id),
+    ),
+  ];
+  const planInteractionPairs: WarningPair[] = getActiveInteractions(planSubstanceIds)
+    .sort((a, b) => INTERACTION_SEVERITY[a.interaction.status] - INTERACTION_SEVERITY[b.interaction.status])
+    .map(p => ({
+      nameA: state.types.find(t => t.id === p.idA)?.name ?? p.idA,
+      nameB: state.types.find(t => t.id === p.idB)?.name ?? p.idB,
+      interaction: p.interaction,
+    }));
+
   // The type for the entry currently being edited
   const editingType = editingEntry
     ? state.types.find(t => t.id === editingEntry.typeId) ?? null
@@ -334,6 +407,48 @@ export default function PlanScreen() {
   function handleDeleteEntry(entryId: string) {
     if (!selectedPlan) return;
     removePlanEntry(selectedPlan.id, entryId);
+  }
+
+  /**
+   * Called when user taps "Add Entry" in AddPlanEntryModal.
+   * If the type is a substance and there are interactions with existing plan substances,
+   * we pause and show the warning modal first.
+   */
+  function handleAddEntry(typeId: string, targetTime: number) {
+    if (!selectedPlan) return;
+
+    const type = state.types.find(t => t.id === typeId);
+    if (type?.isSubstance && state.showInteractionWarnings) {
+      // Existing substance IDs already in the plan (excluding any duplicate of the new one)
+      const existingSubstanceIds = [
+        ...new Set(
+          selectedPlan.entries
+            .map(e => state.types.find(t => t.id === e.typeId))
+            .filter((t): t is StopwatchType => !!t?.isSubstance)
+            .map(t => t.id)
+            .filter(id => id !== typeId),
+        ),
+      ];
+
+      if (existingSubstanceIds.length > 0) {
+        const rawPairs = getActiveInteractions([typeId, ...existingSubstanceIds])
+          .filter(p => p.idA === typeId || p.idB === typeId);
+
+        if (rawPairs.length > 0) {
+          const pairs: WarningPair[] = rawPairs.map(p => ({
+            nameA: state.types.find(t => t.id === p.idA)?.name ?? p.idA,
+            nameB: state.types.find(t => t.id === p.idB)?.name ?? p.idB,
+            interaction: p.interaction,
+          }));
+          setPendingEntry({ typeId, targetTime });
+          setPendingWarningPairs(pairs);
+          return;
+        }
+      }
+    }
+
+    // No warnings — add directly
+    addPlanEntry(selectedPlan.id, typeId, targetTime);
   }
 
   const renamingPlan = renameId
@@ -401,6 +516,18 @@ export default function PlanScreen() {
             ))
           )}
         </View>
+
+        {/* Persistent interaction warnings for substances in this plan */}
+        {state.showInteractionWarnings && planInteractionPairs.length > 0 && (
+          <View style={styles.warningsSection}>
+            <Text style={[styles.sectionLabel, { color: subColor }]}>
+              Interactions
+            </Text>
+            {planInteractionPairs.map((pair, i) => (
+              <PlanWarningRow key={i} pair={pair} isDark={isDark} />
+            ))}
+          </View>
+        )}
       </ScrollView>
 
       {/* FAB */}
@@ -417,9 +544,7 @@ export default function PlanScreen() {
         isDark={isDark}
         now={currentTime}
         onClose={() => setAddEntryVisible(false)}
-        onAdd={(typeId, targetTime) => {
-          if (selectedPlan) addPlanEntry(selectedPlan.id, typeId, targetTime);
-        }}
+        onAdd={handleAddEntry}
       />
 
       {/* Edit entry modal */}
@@ -443,6 +568,28 @@ export default function PlanScreen() {
           setRenameId(null);
         }}
         onCancel={() => setRenameId(null)}
+      />
+
+      {/* Interaction warning popup for plan entry adds */}
+      <InteractionWarningModal
+        visible={pendingEntry !== null}
+        isDark={isDark}
+        newSubstanceName={
+          pendingEntry ? (state.types.find(t => t.id === pendingEntry.typeId)?.name ?? '') : ''
+        }
+        pairs={pendingWarningPairs}
+        confirmLabel="Add anyway"
+        onConfirm={() => {
+          if (pendingEntry && selectedPlan) {
+            addPlanEntry(selectedPlan.id, pendingEntry.typeId, pendingEntry.targetTime);
+          }
+          setPendingEntry(null);
+          setPendingWarningPairs([]);
+        }}
+        onCancel={() => {
+          setPendingEntry(null);
+          setPendingWarningPairs([]);
+        }}
       />
     </SafeAreaView>
   );
@@ -530,6 +677,39 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   deleteEntryText: { fontSize: 13, color: '#FF6B6B', fontWeight: '700' },
+
+  // Persistent interaction warnings section
+  warningsSection: {
+    paddingHorizontal: 16,
+    marginTop: 16,
+    gap: 8,
+  },
+  warnRow: {
+    borderLeftWidth: 3,
+    borderRadius: 8,
+    padding: 10,
+    gap: 6,
+  },
+  warnHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 8,
+  },
+  warnLeft: { flex: 1, gap: 3 },
+  warnBadge: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    alignSelf: 'flex-start',
+  },
+  warnNames: { fontSize: 13, fontWeight: '600' },
+  warnChevron: { fontSize: 10, marginTop: 2 },
+  warnNote: { borderRadius: 6, padding: 8, marginTop: 2 },
+  warnNoteText: { fontSize: 12, lineHeight: 17 },
 
   // FAB
   fab: {
