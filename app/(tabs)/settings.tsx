@@ -25,7 +25,7 @@ const SCHEME_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
 export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const { state, toggleInteractionWarnings } = useStopwatch();
+  const { state, toggleInteractionWarnings, toggleInteractionBadges, setPlanOverlayMode } = useStopwatch();
   const { colorSchemePreference, setColorScheme } = useColorSchemePreference();
   const [disclosureVisible, setDisclosureVisible] = useState(false);
 
@@ -89,9 +89,23 @@ export default function SettingsScreen() {
         <View style={[styles.card, { backgroundColor: cardBg }]}>
           <View style={[styles.row, { borderBottomColor: sepColor }]}>
             <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: textColor }]}>Interaction Warnings</Text>
+              <Text style={[styles.rowTitle, { color: textColor }]}>Interaction Badges</Text>
               <Text style={[styles.rowSub, { color: subColor }]}>
-                Show known drug interaction alerts on the stopwatches screen when multiple substances are active.
+                Show ⚠ badges in the type list when adding a substance that interacts with an active one.
+              </Text>
+            </View>
+            <Switch
+              value={state.showInteractionBadges}
+              onValueChange={toggleInteractionBadges}
+              trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
+              thumbColor="#fff"
+            />
+          </View>
+          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+            <View style={styles.rowText}>
+              <Text style={[styles.rowTitle, { color: textColor }]}>Warning Popups</Text>
+              <Text style={[styles.rowSub, { color: subColor }]}>
+                Show a confirmation dialog when starting a substance that has known interactions with active ones.
               </Text>
             </View>
             <Switch
@@ -100,6 +114,50 @@ export default function SettingsScreen() {
               trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
               thumbColor="#fff"
             />
+          </View>
+        </View>
+
+        {/* Graph */}
+        <Text style={[styles.groupLabel, { color: subColor }]}>Graph</Text>
+        <View style={[styles.card, { backgroundColor: cardBg }]}>
+          <View style={[styles.row, { borderBottomWidth: 0 }]}>
+            <View style={styles.rowText}>
+              <Text style={[styles.rowTitle, { color: textColor }]}>Plan overlay</Text>
+              <Text style={[styles.rowSub, { color: subColor }]}>
+                How toggled plans appear on the live graph.
+              </Text>
+            </View>
+          </View>
+          <View style={[
+            styles.segmentRow,
+            { backgroundColor: isDark ? '#2c2c2e' : '#e5e5ea' },
+          ]}>
+            {([
+              { label: 'Start time', value: 'markers' },
+              { label: 'Full curve',  value: 'curves'  },
+            ] as const).map(opt => {
+              const active = state.planOverlayMode === opt.value;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  style={[
+                    styles.segment,
+                    active && { backgroundColor: isDark ? '#48484a' : '#fff' },
+                    active && styles.segmentActive,
+                  ]}
+                  onPress={() => setPlanOverlayMode(opt.value)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[
+                    styles.segmentText,
+                    { color: active ? (isDark ? '#ECEDEE' : '#11181C') : subColor },
+                    active && styles.segmentTextActive,
+                  ]}>
+                    {opt.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         </View>
 

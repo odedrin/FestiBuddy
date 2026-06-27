@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { formatOffset } from '@/utils/formatOffset';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,6 +16,7 @@ import {
 } from '@/engine/curveEngine';
 import {
   ClockPicker,
+  ClockPickerHandle,
   TimelineSummary,
   ValueStepper,
   toAbsMs,
@@ -51,6 +54,7 @@ export function EditPlanEntryModal({
   onClose,
 }: Props) {
   const [mode, setMode] = useState<EditMode>('start');
+  const clockRef = useRef<ClockPickerHandle>(null);
   const [hour,     setHour]     = useState(0);
   const [minute,   setMinute]   = useState(0);
   const [dayOffset, setDayOffset] = useState(0); // days from today
@@ -130,6 +134,7 @@ export function EditPlanEntryModal({
     >
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.sheet, { backgroundColor: bgColor }]}>
         <View style={[styles.handle, { backgroundColor: handleBg }]} />
 
@@ -154,58 +159,34 @@ export function EditPlanEntryModal({
           ))}
         </View>
 
-        {/* Day offset row */}
-        <View style={styles.dayRow}>
-          <TouchableOpacity
-            style={[styles.dayBtn, { backgroundColor: isDark ? '#2A2D2F' : '#E5E5EA' }]}
-            onPress={() => setDayOffset(d => d - 1)}
-          >
-            <Text style={[styles.dayBtnText, { color: subColor }]}>−1d</Text>
-          </TouchableOpacity>
-          <Text style={[styles.dayLabel, { color: textColor }]}>
-            {dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : `+${dayOffset}d`}
-          </Text>
-          <TouchableOpacity
-            style={[styles.dayBtn, { backgroundColor: isDark ? '#2A2D2F' : '#E5E5EA' }]}
-            onPress={() => setDayOffset(d => d + 1)}
-          >
-            <Text style={[styles.dayBtnText, { color: subColor }]}>+1d</Text>
-          </TouchableOpacity>
-        </View>
-
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {mode === 'start' && (
-            <ClockPicker
-              hour={hour} minute={minute} isDark={isDark} label="Starts at"
-              onHour={setHour} onMinute={setMinute}
-            />
+          {/* ValueStepper only shown in comedown mode */}
+          {mode === 'comedown' && (
+            <ValueStepper value={cdValue} max={type.peakValue} isDark={isDark} onChange={setCdValue} />
           )}
+
+          {/* Single always-mounted ClockPicker — avoids 1680-node remount on mode switch */}
+          <ClockPicker
+            ref={clockRef}
+            hour={mode === 'comedown' ? cdHour : hour}
+            minute={mode === 'comedown' ? cdMinute : minute}
+            isDark={isDark}
+            label={mode === 'start' ? 'Starts at' : mode === 'peak' ? 'Peak begins at' : 'At this clock time'}
+            onHour={mode === 'comedown' ? setCdHour : setHour}
+            onMinute={mode === 'comedown' ? setCdMinute : setMinute}
+            dayOffset={dayOffset}
+            onDayOffset={setDayOffset}
+          />
 
           {mode === 'peak' && (
-            <>
-              <ClockPicker
-                hour={hour} minute={minute} isDark={isDark} label="Peak begins at"
-                onHour={setHour} onMinute={setMinute}
-              />
-              <Text style={[styles.modeNote, { color: subColor }]}>
-                Onset + comeup = {Math.round((type.onsetDuration + type.comeupDuration) / 60_000)}m before peak
-              </Text>
-            </>
-          )}
-
-          {mode === 'comedown' && (
-            <>
-              <ValueStepper value={cdValue} max={type.peakValue} isDark={isDark} onChange={setCdValue} />
-              <ClockPicker
-                hour={cdHour} minute={cdMinute} isDark={isDark} label="At this clock time"
-                onHour={setCdHour} onMinute={setCdMinute}
-              />
-            </>
+            <Text style={[styles.modeNote, { color: subColor }]}>
+              Onset + comeup = {Math.round((type.onsetDuration + type.comeupDuration) / 60_000)}m before peak
+            </Text>
           )}
 
           {/* Timeline preview */}
@@ -223,12 +204,25 @@ export function EditPlanEntryModal({
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.saveBtn, { backgroundColor: type.color }]}
-            onPress={() => { onSave(entry.id, startMs); onClose(); }}
+            onPress={() => {
+              const effH = clockRef.current?.getHour() ?? (mode === 'comedown' ? cdHour : hour);
+              const effM = clockRef.current?.getMinute() ?? (mode === 'comedown' ? cdMinute : minute);
+              const effTarget = absMs(effH, effM, dayOffset);
+              let effStartMs: number;
+              switch (mode) {
+                case 'start': effStartMs = effTarget; break;
+                case 'peak': effStartMs = solveStartForPeakAt(type, effTarget); break;
+                case 'comedown': effStartMs = solveStartForOffsetValue(type, cdValue, effTarget) ?? effTarget; break;
+              }
+              onSave(entry.id, effStartMs);
+              onClose();
+            }}
           >
             <Text style={styles.saveBtnText}>Save</Text>
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -258,8 +252,4 @@ const styles = StyleSheet.create({
   cancelText: { fontSize: 15, fontWeight: '600' },
   saveBtn: { flex: 2, paddingVertical: 14, borderRadius: 14, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  dayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 16, marginBottom: 2 },
-  dayBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
-  dayBtnText: { fontSize: 13, fontWeight: '600' },
-  dayLabel: { fontSize: 15, fontWeight: '600', minWidth: 80, textAlign: 'center' },
 });

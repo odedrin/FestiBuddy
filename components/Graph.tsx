@@ -1,5 +1,5 @@
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-import { PanResponder, useWindowDimensions, View } from 'react-native';
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState, type RefObject } from 'react';
+import { PanResponder, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import Svg, { G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import { evaluate, totalDuration } from '@/engine/curveEngine';
 import { effectiveElapsed, useStopwatch } from '@/store/StopwatchContext';
@@ -23,9 +23,21 @@ export interface PlanMarker {
   color: string;
 }
 
+/** A planned substance curve overlaid on the live graph as a dotted line */
+export interface PlanCurve {
+  type: StopwatchType;
+  startTime: number;
+  /** Label shown near the curve, e.g. "My Plan · MDMA" */
+  label: string;
+}
+
 /** Imperative handle exposed via forwardRef */
 export interface GraphRef {
   resetView: () => void;
+  /** Shift the view by `fraction` of the current window width (negative = backward). */
+  panByFraction: (fraction: number) => void;
+  /** Snap to the current calendar day (midnight → midnight). */
+  showDay: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -35,8 +47,8 @@ export interface GraphRef {
 const PAD = { top: 20, right: 16, bottom: 44, left: 46 };
 const SAMPLES     = 150;               // halved for render performance
 const BUFFER_MS   = 20 * 60_000;       // 20-minute padding on each end
-const MIN_WINDOW  =  1 * 3_600_000;    // 1 hour minimum zoom
-const MAX_WINDOW  = 12 * 3_600_000;    // 12 hour maximum zoom
+const MIN_WINDOW  =  1 * 3_600_000;    //  1 hour minimum zoom
+const MAX_WINDOW  = 24 * 3_600_000;    // 24 hour maximum zoom
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -87,14 +99,22 @@ interface GraphProps {
    */
   planMarkers?: PlanMarker[];
   /**
+   * Planned substance curves overlaid as dotted lines with labels.
+   * Does not affect the sum curve — purely informational overlay.
+   */
+  planCurves?: PlanCurve[];
+  /**
    * Called whenever the graph is panned/zoomed away from the auto window,
    * or snapped back. Used by the parent to show a "Back to Now" button.
    */
   onIsPanned?: (isPanned: boolean) => void;
+  onIsDay?: (isDay: boolean) => void;
+  /** Fired whenever the visible time window changes. startMs/endMs are wall-clock ms. */
+  onViewChange?: (startMs: number, endMs: number) => void;
 }
 
 export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
-  { currentTime, height = 280, colorScheme, overrideEntries, planMarkers, onIsPanned },
+  { currentTime, height = 280, colorScheme, overrideEntries, planMarkers, planCurves, onIsPanned, onIsDay, onViewChange },
   ref,
 ) {
   const { width } = useWindowDimensions();
@@ -110,7 +130,14 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
   const [panOffsetMs, setPanOffsetMs] = useState(0);
   const [windowMs, setWindowMs] = useState(0);
 
+  // Day-view highlight state — set by showDay(), cleared by any other navigation
+  const [isDay, setIsDay] = useState(false);
+  const setIsDayRef = useRef(setIsDay);
+  setIsDayRef.current = setIsDay;
+
   // Refs for live values accessible inside PanResponder (avoids stale closures)
+  const currentTimeRef = useRef(currentTime);
+  currentTimeRef.current = currentTime;
   const cwRef = useRef(cw);
   cwRef.current = cw;
   const wDurRef = useRef(4 * 3_600_000); // updated after each useMemo
@@ -123,16 +150,92 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
   useImperativeHandle(ref, () => ({
     resetView: () => {
       setPanOffsetMs(0);
-      setWindowMs(0);
+      // Keep the current zoom only if it's a "human" zoom (≤12 h).
+      // If coming from day view (24 h) the window would stay the same and
+      // isDay clearing would make Day light up with no visible change — so
+      // we drop back to 6 h instead, making Now actually do something.
+      const cur = windowMsRef.current;
+      const w = cur > 0 && cur <= 12 * 3_600_000 ? cur : 6 * 3_600_000;
+      setWindowMs(w);
+      setIsDayRef.current(false);
+    },
+    panByFraction: (fraction: number) => {
+      const jump = wDurRef.current * fraction;
+      setPanOffsetMs(prev => prev + jump);
+      setIsDayRef.current(false);
+    },
+    showDay: () => {
+      // Center on now, show 24 h (12 h before + 12 h after)
+      setPanOffsetMs(0);
+      setWindowMs(24 * 3_600_000);
+      setIsDayRef.current(true);
     },
   }));
 
-  // ── Notify parent of panned state ─────────────────────────────────────────
+  // ── Notify parent of panned / day state ───────────────────────────────────
   const onIsPannedRef = useRef(onIsPanned);
   onIsPannedRef.current = onIsPanned;
   useEffect(() => {
-    onIsPannedRef.current?.(panOffsetMs !== 0 || windowMs !== 0);
-  }, [panOffsetMs, windowMs]);
+    onIsPannedRef.current?.(panOffsetMs !== 0);
+  }, [panOffsetMs]);
+
+  const onIsDayRef = useRef(onIsDay);
+  onIsDayRef.current = onIsDay;
+  useEffect(() => {
+    onIsDayRef.current?.(isDay);
+  }, [isDay]);
+
+  // ── Notify parent of visible time window ──────────────────────────────────
+  const onViewChangeRef = useRef(onViewChange);
+  onViewChangeRef.current = onViewChange;
+  const visibleWindow = useMemo(() => {
+    const now = currentTime;
+    const entries: GraphEntry[] = overrideEntries
+      ?? state.activeStopwatches.flatMap(sw => {
+           const tp = state.types.find(t => t.id === sw.typeId);
+           if (!tp) return [];
+           return [{ type: tp, startTime: now - effectiveElapsed(sw, now) }];
+         });
+    const markers = planMarkers ?? [];
+    const curves  = planCurves ?? [];
+
+    let autoWStart: number;
+    let autoWEnd:   number;
+    if (entries.length === 0 && markers.length === 0 && curves.length === 0) {
+      autoWStart = now - 2 * 3_600_000;
+      autoWEnd   = now + 2 * 3_600_000;
+    } else if (entries.length === 0) {
+      const allStarts = [...markers.map(m => m.startTime), ...curves.map(c => c.startTime)];
+      const allEnds   = curves.map(c => c.startTime + totalDuration(c.type));
+      autoWStart = (allStarts.length > 0 ? Math.min(...allStarts) : now) - BUFFER_MS;
+      autoWEnd   = (allEnds.length > 0 ? Math.max(...allEnds, now) : now) + 2 * 3_600_000;
+    } else {
+      const starts    = entries.map(e => e.startTime);
+      const ends      = entries.map(e => e.startTime + totalDuration(e.type));
+      const cEnds     = curves.map(c => c.startTime + totalDuration(c.type));
+      const allMStarts = markers.map(m => m.startTime);
+      autoWStart = Math.min(...starts, ...allMStarts, ...curves.map(c => c.startTime)) - BUFFER_MS;
+      autoWEnd   = Math.max(Math.max(...ends, ...cEnds), now, ...allMStarts, ...curves.map(c => c.startTime)) + BUFFER_MS;
+    }
+
+    let wStart: number;
+    let wEnd:   number;
+    if (windowMs > 0 || panOffsetMs !== 0) {
+      const dur    = windowMs > 0 ? windowMs : (autoWEnd - autoWStart);
+      const center = now + panOffsetMs;
+      wStart = center - dur / 2;
+      wEnd   = center + dur / 2;
+    } else {
+      const halfWidth = Math.max(now - autoWStart, autoWEnd - now);
+      wStart = now - halfWidth;
+      wEnd   = now + halfWidth;
+    }
+    return { wStart, wEnd };
+  }, [currentTime, panOffsetMs, windowMs, overrideEntries, planMarkers, planCurves, state.activeStopwatches, state.types]);
+
+  useEffect(() => {
+    onViewChangeRef.current?.(visibleWindow.wStart, visibleWindow.wEnd);
+  }, [visibleWindow]);
 
   // RAF handles for batching gesture-driven state updates at ≤60fps
   const panRafRef  = useRef<ReturnType<typeof requestAnimationFrame> | null>(null);
@@ -161,6 +264,7 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
       },
 
       onPanResponderGrant: e => {
+        setIsDayRef.current(false);
         const touches = e.nativeEvent.touches;
         if (touches.length >= 2) {
           gestureRef.current.isPinching = true;
@@ -265,13 +369,20 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
       autoWEnd   = now + 2 * 3_600_000;
     } else if (entries.length === 0) {
       const mTimes = markers.map(m => m.startTime);
-      autoWStart   = Math.min(...mTimes) - BUFFER_MS;
-      autoWEnd     = Math.max(...mTimes) + 2 * 3_600_000;
+      const cTimes = (planCurves ?? []).map(c => c.startTime);
+      const cEnds  = (planCurves ?? []).map(c => c.startTime + totalDuration(c.type));
+      const allStarts = [...mTimes, ...cTimes];
+      const allEnds   = [...cEnds];
+      autoWStart = (allStarts.length > 0 ? Math.min(...allStarts) : now) - BUFFER_MS;
+      autoWEnd   = (allEnds.length > 0 ? Math.max(...allEnds, now) : now) + 2 * 3_600_000;
     } else {
-      const starts = entries.map(e => e.startTime);
-      const ends   = entries.map(e => e.startTime + totalDuration(e.type));
-      autoWStart   = Math.min(...starts, ...markers.map(m => m.startTime)) - BUFFER_MS;
-      autoWEnd     = Math.max(Math.max(...ends), now, ...markers.map(m => m.startTime)) + BUFFER_MS;
+      const starts   = entries.map(e => e.startTime);
+      const ends     = entries.map(e => e.startTime + totalDuration(e.type));
+      const cEnds    = (planCurves ?? []).map(c => c.startTime + totalDuration(c.type));
+      const allMStarts = markers.map(m => m.startTime);
+      const cStarts  = (planCurves ?? []).map(c => c.startTime);
+      autoWStart = Math.min(...starts, ...allMStarts, ...cStarts) - BUFFER_MS;
+      autoWEnd   = Math.max(Math.max(...ends, ...cEnds), now, ...allMStarts, ...cStarts) + BUFFER_MS;
     }
 
     // ── Apply zoom / pan ──────────────────────────────────────────────────
@@ -284,8 +395,10 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
       wStart = center - dur / 2;
       wEnd   = center + dur / 2;
     } else {
-      wStart = autoWStart;
-      wEnd   = autoWEnd;
+      // Auto mode: keep now centered by making the window symmetric
+      const halfWidth = Math.max(now - autoWStart, autoWEnd - now);
+      wStart = now - halfWidth;
+      wEnd   = now + halfWidth;
     }
 
     const wDur = wEnd - wStart;
@@ -323,6 +436,27 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
         color:  e.type.color,
         past:   buildPath(times, vals, 0, Math.min(splitIdx + 1, times.length), mapT, mapV),
         future: buildPath(times, vals, Math.max(splitIdx - 1, 0), times.length, mapT, mapV),
+      };
+    });
+
+    // ── Plan curve paths (ghost fill overlay) ────────────────────────────
+    const baselineY = (PAD.top + ch).toFixed(1);
+    const windowStartX = mapT(times[0]).toFixed(1);
+    const windowEndX   = mapT(times[times.length - 1]).toFixed(1);
+    const planCurvePaths = (planCurves ?? []).map((c, i) => {
+      const vals   = times.map(t => evaluate(c.type, t - c.startTime));
+      const stroke = buildPath(times, vals, 0, times.length, mapT, mapV);
+      // Close back along the baseline to form a filled area
+      const fill   = stroke
+        ? `${stroke} L${windowEndX},${baselineY} L${windowStartX},${baselineY} Z`
+        : '';
+      return {
+        color:  c.type.color,
+        stroke,
+        fill,
+        labelX: mapT(c.startTime) + 6,
+        labelY: PAD.top + 4 + i * 18,
+        label:  c.label,
       };
     });
 
@@ -373,8 +507,8 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
       color: m.color,
     }));
 
-    return { sumPastPath, sumFuturePath, swPaths, xTicks, yTicks, nowX, planMarkerLines, wDur };
-  }, [currentTime, state, overrideEntries, planMarkers, cw, ch, panOffsetMs, windowMs]);
+    return { sumPastPath, sumFuturePath, swPaths, planCurvePaths, xTicks, yTicks, nowX, planMarkerLines, wDur };
+  }, [currentTime, state, overrideEntries, planMarkers, planCurves, cw, ch, panOffsetMs, windowMs]);
 
   // Keep wDurRef in sync so gesture handlers always have the current value
   wDurRef.current = data.wDur;
@@ -416,6 +550,29 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
         {data.sumFuturePath ? (
           <Path d={data.sumFuturePath} stroke={sumColor} strokeWidth={2.5} fill="none" strokeOpacity={0.45} strokeDasharray="8,5" />
         ) : null}
+
+        {/* Plan curves — ghost fill + thin dashed outline */}
+        {data.planCurvePaths.map((p, i) => (
+          <G key={`pc-${i}`}>
+            {p.fill ? (
+              <Path d={p.fill} fill={p.color} fillOpacity={0.08} stroke="none" />
+            ) : null}
+            {p.stroke ? (
+              <Path d={p.stroke} stroke={p.color} strokeWidth={1} fill="none" strokeOpacity={0.35} strokeDasharray="3,5" />
+            ) : null}
+            <Rect
+              x={p.labelX} y={p.labelY}
+              width={Math.min(p.label.length * 6 + 10, cw - (p.labelX - PAD.left) - 10)}
+              height={16} rx={4} fill={p.color} opacity={0.2}
+            />
+            <SvgText
+              x={p.labelX + 5} y={p.labelY + 11}
+              fontSize={10} fontWeight="600" fill={p.color} opacity={1}
+            >
+              {p.label}
+            </SvgText>
+          </G>
+        ))}
 
         {/* Plan start-time markers — solid vertical line + label chip */}
         {data.planMarkerLines.map((m, i) => {
@@ -476,4 +633,79 @@ export const Graph = forwardRef<GraphRef, GraphProps>(function Graph(
       </Svg>
     </View>
   );
+});
+
+// ---------------------------------------------------------------------------
+// GraphNavBar — navigation controls rendered below the graph
+// ---------------------------------------------------------------------------
+
+export function GraphNavBar({
+  graphRef,
+  isDark,
+  tint,
+  isPanned = false,
+  isDay = false,
+}: {
+  graphRef: RefObject<GraphRef | null>;
+  isDark: boolean;
+  tint: string;
+  isPanned?: boolean;
+  isDay?: boolean;
+}) {
+  const subColor  = isDark ? '#9BA1A6' : '#687076';
+  const btnBg     = isDark ? '#1E2022' : '#F0F0F0';
+  const btnBorder = isDark ? '#2A2D2F' : '#E0E0E5';
+
+  function NavBtn({
+    label, onPress, accent, wide,
+  }: { label: string; onPress: () => void; accent?: boolean; wide?: boolean }) {
+    return (
+      <TouchableOpacity
+        style={[
+          navSt.btn,
+          wide && navSt.btnWide,
+          { backgroundColor: btnBg, borderColor: accent ? tint : btnBorder },
+        ]}
+        onPress={onPress}
+        activeOpacity={0.7}
+      >
+        <Text style={[navSt.btnText, { color: accent ? tint : subColor }]}>{label}</Text>
+      </TouchableOpacity>
+    );
+  }
+
+  return (
+    <View style={navSt.row}>
+      <NavBtn label="«" onPress={() => graphRef.current?.panByFraction(-1)} />
+      <NavBtn label="‹" onPress={() => graphRef.current?.panByFraction(-0.5)} />
+      <View style={navSt.spacer} />
+      <NavBtn label="Now" onPress={() => graphRef.current?.resetView()} accent={isPanned} wide />
+      <NavBtn label="Day" onPress={() => graphRef.current?.showDay()} accent={!isDay} wide />
+      <View style={navSt.spacer} />
+      <NavBtn label="›" onPress={() => graphRef.current?.panByFraction(0.5)} />
+      <NavBtn label="»" onPress={() => graphRef.current?.panByFraction(1)} />
+    </View>
+  );
+}
+
+const navSt = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 6,
+    paddingBottom: 2,
+    gap: 6,
+  },
+  btn: {
+    width: 36,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnWide: { width: 52 },
+  btnText: { fontSize: 12, fontWeight: '600' },
+  spacer: { flex: 1 },
 });

@@ -51,7 +51,8 @@ export function useInteractionGuard(): GuardResult {
 
       if (activeSubstanceIds.length > 0) {
         const rawPairs = getActiveInteractions([typeId, ...activeSubstanceIds])
-          .filter(p => p.idA === typeId || p.idB === typeId);
+          .filter(p => p.idA === typeId || p.idB === typeId)
+          .filter(p => !p.interaction.status.startsWith('Low Risk'));
 
         if (rawPairs.length > 0) {
           // Deduplicate pairs by canonical key (belt-and-suspenders)

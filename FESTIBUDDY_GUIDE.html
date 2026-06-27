@@ -391,13 +391,12 @@
       <li><a href="#model">2. Superposition Model</a></li>
       <li><a href="#types">3. Stopwatch Types</a></li>
       <li class="section"><a href="#screens">Screens</a></li>
-      <li><a href="#stopwatches">4.1 Stopwatches</a></li>
-      <li><a href="#graph">4.2 Graph</a></li>
-      <li><a href="#types-screen">4.3 Types</a></li>
-      <li><a href="#plan-mode">4.4 Plan Mode</a></li>
-      <li><a href="#substances">4.5 Substances</a></li>
-      <li><a href="#interactions">4.6 Drug Interactions</a></li>
-      <li><a href="#settings">4.7 Settings</a></li>
+      <li><a href="#graph">4.1 Live Graph</a></li>
+      <li><a href="#types-screen">4.2 Types</a></li>
+      <li><a href="#plan-mode">4.3 Plan</a></li>
+      <li><a href="#substances">4.4 Substances</a></li>
+      <li><a href="#interactions">4.5 Drug Interactions</a></li>
+      <li><a href="#settings">4.6 Settings</a></li>
       <li class="section"><a href="#plans">Deep Dives</a></li>
       <li><a href="#plans">5. Working with Plans</a></li>
       <li><a href="#custom">6. Custom Types</a></li>
@@ -414,7 +413,7 @@
       <h1>Festi<span>Bud</span></h1>
       <p style="color:var(--sub); font-size:16px;">User Guide &amp; Product Documentation</p>
       <div class="meta-pills">
-        <span class="pill">v1.2</span>
+        <span class="pill">v1.5</span>
         <span class="pill">iOS / Android</span>
         <span class="pill">React Native + Expo</span>
         <span class="pill">Fully offline</span>
@@ -592,45 +591,12 @@
     </section>
 
     <!-- ── 4. Screens ── -->
-    <section id="stopwatches">
-      <h2><span class="sec-num">4.1</span> Stopwatches Screen</h2>
-      <p>The main operational view. Shows all <strong>currently running</strong> stopwatch instances, updating 4× per second.</p>
-
-      <h4>Header</h4>
-      <ul>
-        <li><strong>Time since session start</strong> — displays the wall-clock time elapsed since the earliest currently-running stopwatch was started (HH:MM:SS). Updates every 250 ms.</li>
-      </ul>
-
-      <h4>Stopwatch cards</h4>
-      <p>Each card shows elapsed / total time (e.g. "1h 10m / 2h") as the primary display.</p>
-      <ul>
-        <li><strong>Color stripe</strong> on the left (type color)</li>
-        <li><strong>Type name</strong> and elapsed / total time — tap the <strong>✎ edit icon</strong> to edit the start time (shifts the entire curve in place)</li>
-        <li><strong>Phase progress bar</strong> — segmented bar showing all four phases. Darker segment = higher intensity. A thin vertical cursor marks the exact current position.</li>
-        <li><strong>Current phase pill</strong> — shows the current phase name (Onset / Comeup / Peak / Offset).</li>
-        <li><strong>⏸ Pause / ▶ Resume button</strong> — freezes elapsed time; resume picks up from where it left off.</li>
-        <li><strong>✕ Stop button</strong> — removes the instance from the running total immediately.</li>
-      </ul>
-
-      <h4>Editing a start time</h4>
-      <p>Tap the <strong>✎ edit icon</strong> on any running stopwatch card. A clock picker opens showing the clock time the stopwatch started ("Started at"). Adjust the hour and minutes, then confirm. The curve shifts accordingly without restarting the stopwatch. Future times are not allowed — if the picked time is later than now, it is clamped to the current time.</p>
-
-      <h4>Auto-cleanup</h4>
-      <p>Every minute, FestiBud removes any stopwatch whose curve has fully completed (reached the end of its offset phase) more than <strong>24 hours ago</strong>. This runs automatically in the background — no manual action needed.</p>
-
-      <h4>Starting a stopwatch</h4>
-      <p>Tap the <strong>+ FAB</strong> at the bottom. A bottom sheet appears with all types, <strong>favorites first</strong>, followed by general types and a <strong>Substances</strong> section at the bottom. Tap <strong>▶ Start</strong> to launch an instance and close the sheet. Each substance row also shows a <strong>↗</strong> button that opens the substance's PsychonautWiki article in the system browser without closing the sheet.</p>
-      <p>When starting a <strong>substance type</strong> while other substance stopwatches are already running, FestiBud checks for known drug interactions. If any are found and Interaction Warnings are enabled in Settings, a modal appears listing the interaction pairs with severity badges before the stopwatch starts. You can <strong>Start anyway</strong> or <strong>Cancel</strong> to go back to the sheet.</p>
-    </section>
-
     <section id="graph">
-      <h2><span class="sec-num">4.2</span> Graph Screen</h2>
-      <p>Shows the full superposition graph — past (solid) and predicted future (dashed) — updating every second.</p>
+      <h2><span class="sec-num">4.1</span> Live Graph Screen</h2>
+      <p>The main operational view. Shows the full superposition graph alongside a scrollable legend of all running stopwatches, updating every second. The screen is divided into three always-visible containers.</p>
 
-      <h4>Header</h4>
-      <p>Displays the wall-clock time elapsed since the earliest currently-running stopwatch was started (HH:MM:SS), labelled "elapsed".</p>
-
-      <h4>The graph</h4>
+      <h4>Container 1 — Graph card</h4>
+      <p>A compact elapsed timer sits above the graph: a "LIVE GRAPH" label, the wall-clock time since the earliest running stopwatch (HH:MM:SS), and an "elapsed" suffix.</p>
       <ul>
         <li><strong>Teal line (sum)</strong> — superposition y(t). Solid past, dashed future at 45% opacity.</li>
         <li><strong>Colored lines (individual)</strong> — each running stopwatch at its type color. 45% opacity past, 20% future.</li>
@@ -638,23 +604,45 @@
         <li><strong>X-axis</strong> — wall-clock time. Tick density adapts to the time window.</li>
         <li><strong>Y-axis</strong> — value scale, up to ~115% of the summed peaks.</li>
       </ul>
-      <p>The time window spans from 20 minutes before the earliest running stopwatch to 20 minutes after the last one finishes.</p>
+      <p><strong>Pinch</strong> to zoom (1–24 h window). <strong>Swipe horizontally</strong> to pan.</p>
+      <p>When you pan or zoom so that one or more items (running stopwatches or overlaid plan entries) are entirely outside the visible window, <strong>off-screen indicator pills</strong> appear on the relevant edge of the graph card: <strong>‹ N</strong> on the left if N items have already ended before the left edge, and <strong>N ›</strong> on the right if N items haven't started yet relative to the right edge. Tapping the <em>Now</em> or <em>Day</em> nav buttons typically brings all items back into view and the pills disappear.</p>
+      <p>A <strong>navigation bar</strong> sits below the graph inside the card with six controls:</p>
+      <ul>
+        <li><strong>«  ‹</strong> — pan backward by 100% / 50% of the current window width</li>
+        <li><strong>Now</strong> — re-centers the view on the current time. If your current zoom is 12 h or less it is preserved; if you are in the 24 h day view it resets to a 6 h window so the view actually changes. Highlights (teal) when you have panned away from center.</li>
+        <li><strong>Day</strong> — switches to a 24 h window centered on the current time (12 h past, 12 h future). Highlights (teal) when you are <em>not</em> in the 24 h view — press it to enter day view, it dims when day view is active.</li>
+        <li><strong>›  »</strong> — pan forward by 50% / 100% of the current window width</li>
+      </ul>
 
-      <h4>Legend</h4>
-      <p>The first row shows a "Sum y(t)" label for the teal superposition line. Each running stopwatch then gets its own row showing: color swatch, type name, current phase pill, and elapsed / total time (e.g. "01:10:00 / 2h 00m").</p>
+      <h4>Container 2 — Overlay plans</h4>
+      <p>Only shown when at least one plan exists. A horizontal row of chips — one per saved plan — lets you toggle any plan's entries onto the graph without navigating away. The overlay mode (Markers or Curves) is controlled in Settings → <strong>Plan overlay</strong>:</p>
+      <ul>
+        <li><strong>Markers</strong> (default) — a vertical start-time line per entry, labeled with plan and substance name.</li>
+        <li><strong>Curves</strong> — draws the full predicted curve for each plan entry at its type color, overlaid on the live graph.</li>
+      </ul>
 
-      <h4>Zoom and pan</h4>
-      <p><strong>Pinch</strong> on the graph to zoom the visible time window between 1 and 12 hours. <strong>Swipe horizontally</strong> to pan backward or forward in time. A <strong>↩ Back to Now</strong> button appears inside the graph card whenever you've panned or zoomed away from the auto window — tap it to snap back to the live view.</p>
+      <h4>Container 3 — Running now (legend)</h4>
+      <p>A flex card that takes all remaining vertical space and scrolls internally. A sticky header shows the title ("Running now" or "N selected") plus action buttons:</p>
+      <ul>
+        <li><strong>Select / Cancel</strong> — enters multi-select mode (visible when at least one stopwatch is running). Long-pressing any row also enters select mode and selects that row. In select mode a <strong>Remove</strong> button appears; tapping it shows a confirmation prompt before deleting all selected stopwatches.</li>
+      </ul>
+      <p>Each row in the legend shows:</p>
+      <ul>
+        <li><strong>Color stripe</strong> on the left edge</li>
+        <li><strong>Type name</strong> and <strong>current phase pill</strong></li>
+        <li><strong>Elapsed / total</strong> time (e.g. "01:10:00 / 02:00:00")</li>
+        <li><strong>Phase progress bar</strong> — compact 5 px segmented bar (onset → comeup → peak → offset, each at a different opacity). A thin vertical cursor marks the exact current position.</li>
+        <li><strong>✎ edit button</strong> — opens the drum-roll clock picker to adjust the start time</li>
+        <li><strong>✕ stop button</strong> — removes the stopwatch (confirmation required)</li>
+        <li>In select mode, a <strong>checkbox circle</strong> replaces the action buttons</li>
+      </ul>
 
-      <h4>Plan overlay</h4>
-      <p>Each saved plan has a show/hide chip below the graph card. When shown, the plan's entries appear as <strong>vertical start-time marker lines</strong> on the graph — one line per entry, labeled with the plan name and substance name. No curves are drawn; only start times are marked, keeping the live signal uncluttered.</p>
-
-      <h4>Plan Mode button</h4>
-      <p>A pill button below the graph card opens <a href="#plan-mode">Plan Mode</a>.</p>
+      <h4>+ FAB</h4>
+      <p>A floating action button in the bottom-right corner opens the <strong>Add Stopwatch</strong> bottom sheet. It lists all types (favorites first, then general, then Substances), may show colored <strong>interaction badges</strong> for known interactions with active stopwatches (see §4.5 for badge icons), and includes <strong>↗</strong> links to PsychonautWiki for substance types. Tap <strong>▶ Start</strong> to launch an instance. If the type is a substance with a Caution, Unsafe, or Dangerous interaction and Warning Popups are enabled, a blocking confirmation modal appears first.</p>
     </section>
 
     <section id="types-screen">
-      <h2><span class="sec-num">4.3</span> Types Screen</h2>
+      <h2><span class="sec-num">4.2</span> Types Screen</h2>
       <p>Manage your stopwatch type library. Sections: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. Types you've hidden appear in a collapsible <strong>Hidden</strong> section at the bottom.</p>
 
       <h4>Type cards</h4>
@@ -674,37 +662,48 @@
     </section>
 
     <section id="plan-mode">
-      <h2><span class="sec-num">4.4</span> Plan Mode</h2>
-      <p>Accessed from the Graph screen. A separate screen (not a tab) for hypothetically placing entries and previewing the curve <strong>without starting any real stopwatches</strong>.</p>
+      <h2><span class="sec-num">4.3</span> Plan Screen</h2>
+      <p>A <strong>permanent tab</strong> for hypothetically placing entries and previewing the curve <strong>without starting any real stopwatches</strong>.</p>
       <div class="callout">
         Example use: "If I start an Extended now and a Quick in 45 minutes, what does my evening curve look like?"
       </div>
 
-      <h4>Plans</h4>
-      <p>You can have multiple named plans. A <strong>chip bar</strong> at the top switches between them.</p>
+      <h4>Layout</h4>
+      <p>The screen uses a fixed flex layout — no outer scroll — so all four areas are always visible:</p>
+      <ol>
+        <li><strong>Chip bar</strong> (top) — switches between saved plans. Horizontal scroll if many plans exist.</li>
+        <li><strong>Graph card</strong> (fixed height) — previews the selected plan's curve.</li>
+        <li><strong>Entry card</strong> (flex, takes remaining space) — scrollable list of plan entries.</li>
+        <li><strong>Interactions card</strong> (bounded height, only shown when interactions exist) — scrollable list of interaction pairs for the current plan.</li>
+      </ol>
+
+      <h4>Managing plans</h4>
+      <p>The chip bar at the top lists all saved plans.</p>
       <ul>
-        <li><strong>Tap</strong> a chip to select</li>
-        <li><strong>Long-press</strong> to rename or delete</li>
-        <li><strong>✏ pencil icon</strong> on the selected chip — rename dialog</li>
+        <li><strong>Tap</strong> a chip to select it</li>
+        <li><strong>Long-press</strong> for rename / delete options</li>
+        <li><strong>✏ pencil icon</strong> on the selected chip — opens the rename dialog inline. The dialog also contains a <strong>Delete Plan</strong> button (red, below a divider) for quick deletion without closing and long-pressing.</li>
         <li><strong>+ New</strong> — creates a new empty plan</li>
       </ul>
 
       <h4>Plan graph</h4>
-      <p>The graph previews the selected plan using vertical <strong>start-time markers</strong> for each entry — no live stopwatch curves are shown. The graph updates in real time, so as minutes pass, the markers shift correctly relative to the "now" line.</p>
+      <p>The graph previews the selected plan using vertical <strong>start-time markers</strong> for each entry — no live stopwatch curves are shown. The graph updates in real time so markers shift correctly as minutes pass.</p>
+      <p>The same <strong>off-screen indicator pills</strong> as on the Live Graph appear here: <strong>‹ N</strong> on the left edge when N plan entries have already ended before the visible window, and <strong>N ›</strong> on the right when N entries haven't started yet relative to the right edge.</p>
+      <p>The same <strong>navigation bar</strong> as on the Live Graph screen appears below the plan graph — «, ‹, Now, Day, ›, » — with identical pan/zoom behaviour and highlight logic.</p>
 
       <h4>Plan entries</h4>
-      <p>Each entry has a type, a human-readable time offset from now (e.g. "+2h 15m", "−30m", "now"), an <strong>Edit</strong> button (opens the time editor), and a <strong>✕</strong> delete button.</p>
-      <p>Tap the <strong>+ FAB</strong> to add a new entry: pick a type, set the timing using any of the three anchor modes (Start at, Peak at, Comedown), tap <strong>Add Entry</strong>. The same modes are available when editing an existing entry.</p>
-      <p>When adding a <strong>substance type</strong> that would interact with substances already in the plan, an interaction warning popup appears (if warnings are enabled) before the entry is committed. Tap <strong>Add anyway</strong> to proceed or <strong>Cancel</strong> to discard.</p>
-      <p>Entries store an <strong>absolute target time</strong>, so a plan created today can include entries scheduled for tomorrow or later without any time drift.</p>
+      <p>Each entry in the scrollable card shows: type color dot, type name, duration, and the planned wall-clock time (e.g. "Today 22:30"). Action buttons: <strong>Edit</strong> (opens the time editor) and <strong>✕</strong> (deletes the entry).</p>
+      <p>Tap the <strong>+ FAB</strong> to add a new entry: pick a type, set the timing using one of the three anchor modes (Start at, Peak at, Comedown), tap <strong>Add Entry</strong>. The same modes are available when editing.</p>
+      <p>When adding a <strong>substance type</strong> that would interact with substances already in the plan, an interaction warning popup appears (if Warning Popups are enabled in Settings) before the entry is committed. Tap <strong>Add anyway</strong> to proceed or <strong>Cancel</strong> to discard.</p>
+      <p>Entries store an <strong>absolute target time</strong>, so a plan created today can include entries scheduled for tomorrow or later without drift.</p>
 
       <h4>Persistent interaction warnings</h4>
-      <p>Below the entry list, FestiBud shows a persistent <strong>Interactions</strong> panel listing all known interaction pairs between substance entries currently in the plan — sorted by severity (Dangerous first). Each row shows a severity badge and the two substance names; tap a row to expand the clinical note. This panel only appears when Interaction Warnings are enabled in Settings and the plan contains at least two interacting substances.</p>
+      <p>A dedicated <strong>Interactions card</strong> below the entry list shows all known interaction pairs between substance entries in the plan — sorted by severity (Dangerous first). Each row shows a severity badge and the two substance names; tap to expand the clinical note. This card only appears when Warning Popups are enabled in Settings and the plan contains at least two interacting substances.</p>
     </section>
 
-    <!-- ── 4.5 Substances ── -->
+    <!-- ── 4.4 Substances ── -->
     <section id="substances">
-      <h2><span class="sec-num">4.5</span> Substance Database</h2>
+      <h2><span class="sec-num">4.4</span> Substance Database</h2>
       <p>The Types screen has a third section — <strong>Substances</strong> — showing the 16 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
 
       <h4>PK data quality</h4>
@@ -733,9 +732,9 @@
       </table>
     </section>
 
-    <!-- ── 4.6 Drug Interactions ── -->
+    <!-- ── 4.5 Drug Interactions ── -->
     <section id="interactions">
-      <h2><span class="sec-num">4.6</span> Drug Interactions</h2>
+      <h2><span class="sec-num">4.5</span> Drug Interactions</h2>
       <p>FestiBud bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, FestiBud warns you before you commit — either at stopwatch start or plan entry add.</p>
 
       <h4>Severity levels</h4>
@@ -745,9 +744,9 @@
           <tr><td><strong>☠ Dangerous</strong></td><td style="color:#FF3B30;">Red</td><td>Life-threatening risk. Avoid. (e.g. Alcohol + GHB, GHB + Ketamine)</td></tr>
           <tr><td><strong>⚠ Unsafe</strong></td><td style="color:#FF9500;">Orange</td><td>Significant risk of serious harm. (e.g. GHB + MDMA, Amphetamine + Cocaine)</td></tr>
           <tr><td><strong>⚡ Caution</strong></td><td style="color:#FFCC00;">Yellow</td><td>Unpredictable interaction; use care. (e.g. Alcohol + Cocaine)</td></tr>
+          <tr><td><strong>↑ Low Risk &amp; Synergy</strong></td><td style="color:#34C759;">Green</td><td>Generally manageable; effects amplify each other in a predictable way.</td></tr>
           <tr><td><strong>↓ Low Risk &amp; Decrease</strong></td><td style="color:#34C759;">Green</td><td>Generally manageable; one substance reduces the other's effects.</td></tr>
-          <tr><td><strong>✦ Low Risk &amp; Synergy</strong></td><td style="color:#34C759;">Green</td><td>Generally manageable; effects combine in a predictable way.</td></tr>
-          <tr><td><strong>• Low Risk &amp; No Synergy</strong></td><td style="color:#34C759;">Green</td><td>Minimal interaction expected.</td></tr>
+          <tr><td><strong>▲ Low Risk &amp; No Synergy</strong></td><td style="color:#34C759;">Green</td><td>Minimal interaction expected.</td></tr>
         </tbody>
       </table>
 
@@ -760,14 +759,15 @@
         <li>An expandable clinical note (tap a row to reveal)</li>
       </ul>
       <p>Two buttons: <strong>Cancel</strong> (go back without starting/adding) and <strong>Start anyway</strong> / <strong>Add anyway</strong> (proceed).</p>
-      <p>The popup only appears when <strong>Interaction Warnings</strong> is enabled in Settings (on by default). Disable it there to suppress all interaction popups and persistent panels.</p>
+      <p>The popup only fires for <strong>Caution, Unsafe, and Dangerous</strong> interactions. Low Risk combinations (Synergy, Decrease, No Synergy) are intentionally excluded — they still appear as badges in the type list, but never block you with a popup.</p>
+      <p>The popup only appears when <strong>Warning Popups</strong> is enabled in Settings (on by default). A separate <strong>Interaction Badges</strong> toggle controls the badges shown in the type list before you tap Start — the two settings are independent so you can show badges without popups, or vice versa.</p>
 
       <div class="callout">Interaction data covers substance-to-substance risks only between the 16 bundled profiles. Interactions with unlisted substances or user-created custom types are not checked.</div>
     </section>
 
-    <!-- ── 4.7 Settings ── -->
+    <!-- ── 4.6 Settings ── -->
     <section id="settings">
-      <h2><span class="sec-num">4.7</span> Settings</h2>
+      <h2><span class="sec-num">4.6</span> Settings</h2>
       <p>Accessed via the gear icon tab. Contains app-wide preferences and attribution.</p>
 
       <h4>Appearance</h4>
@@ -777,7 +777,13 @@
 
       <h4>Harm Reduction</h4>
       <ul>
-        <li><strong>Interaction Warnings</strong> — toggle (on by default). When enabled, FestiBud shows warning popups before starting a substance stopwatch or adding a substance plan entry that creates a known interaction, and renders the persistent interactions panel in Plan Mode. Disable to remove all interaction UI.</li>
+        <li><strong>Interaction Badges</strong> — toggle (on by default). When enabled, a colored badge appears next to any substance in the Add Stopwatch or Add Plan Entry sheet when that substance has a known interaction with a currently active stopwatch or existing plan entry. The badge icon reflects the interaction type: <strong>⚠</strong> Dangerous/Unsafe/Caution, <strong>↑</strong> Low Risk &amp; Synergy, <strong>↓</strong> Low Risk &amp; Decrease, <strong>▲</strong> Low Risk &amp; No Synergy. When a substance has multiple simultaneous interactions, the most important one is shown (Synergy takes priority over Decrease, which takes priority over No Synergy). Disable to hide all badges while keeping warning popups active.</li>
+        <li><strong>Warning Popups</strong> — toggle (on by default). When enabled, a blocking confirmation modal appears before starting a substance stopwatch or adding a plan entry that creates a known interaction. Also controls the persistent Interactions panel at the bottom of the Plan screen. Disable to proceed silently without any blocking dialog.</li>
+      </ul>
+
+      <h4>Graph</h4>
+      <ul>
+        <li><strong>Plan overlay mode</strong> — controls how toggled-on plans are rendered on the Graph screen. <strong>Markers</strong> (default): one vertical start-time line per entry, labeled with plan and substance name — keeps the live signal clean. <strong>Curves</strong>: draws the full predicted curve for each plan entry at its type color, overlaid on the live graph for a side-by-side comparison of planned vs. live.</li>
       </ul>
 
       <h4>About</h4>
@@ -826,15 +832,15 @@
         </div>
       </div>
 
-      <h3>Day selector</h3>
-      <p>A <strong>−1d / +1d</strong> control above the clock picker lets you shift the entry to a different day. The label shows "Today", "Tomorrow", or "+Nd" for further ahead. This makes it easy to plan across midnight without needing a full calendar UI.</p>
-
-      <h3>The clock picker</h3>
-      <p>An <strong>HH:MM picker</strong> is the main control in all three modes:</p>
+      <h3>The drum-roll time picker</h3>
+      <p>All time-editing flows (plan entries and running stopwatch start times) use a <strong>drum-roll scroll picker</strong> with three columns: day, hour, and minute.</p>
       <ul>
-        <li><strong>▲ / ▼</strong> — adjust hour (±1h, wraps 0–23)</li>
-        <li><strong>+15 / +5 / +1</strong> and <strong>−15 / −5 / −1</strong> — adjust minutes (wraps 0–59)</li>
+        <li><strong>Day column</strong> — scrolls from −3d to +3d, with "Today" in the centre. Labels: "−3d", "−2d", "−1d", "Today", "+1d", "+2d", "+3d".</li>
+        <li><strong>Hour column</strong> — 0–23, circular (scrolling past 23 wraps back to 0 and vice versa).</li>
+        <li><strong>Minute column</strong> — 0–59, circular.</li>
       </ul>
+      <p>The selected item is the large centred value; adjacent items are shown smaller and faded. Scroll any column to snap to the desired value.</p>
+      <p><strong>Keyboard editing:</strong> tap the selected (large) item in the hour or minute column to open a combined HHMM keyboard overlay. A four-digit display appears (<code>HH MM</code>). Each digit you type barrel-shifts from the right — typing <kbd>1</kbd> <kbd>4</kbd> <kbd>3</kbd> <kbd>0</kbd> produces 14:30. Tap elsewhere, press Return, or press any non-digit key to commit and return to scroll mode. The overlay seeds from the current picker value so you start from where you left off.</p>
 
       <h3>Offset display</h3>
       <p>The offset from now is shown in a human-readable format that scales with duration:</p>
@@ -892,10 +898,11 @@
       <div class="filetree">
 <span class="dir">app/</span>
 <span class="dir">├── (tabs)/</span>
-<span class="file">│   ├── index.tsx        </span><span class="comment">— Stopwatches screen</span>
-<span class="file">│   ├── explore.tsx      </span><span class="comment">— Graph screen</span>
-<span class="file">│   └── types.tsx        </span><span class="comment">— Types screen</span>
-<span class="file">├── plan.tsx             </span><span class="comment">— Plan Mode screen</span>
+<span class="file">│   ├── index.tsx        </span><span class="comment">— Redirects to explore (no tab)</span>
+<span class="file">│   ├── explore.tsx      </span><span class="comment">— Live Graph screen — default tab (graph + stopwatch legend + FAB)</span>
+<span class="file">│   ├── plan.tsx         </span><span class="comment">— Plan screen (permanent tab)</span>
+<span class="file">│   ├── types.tsx        </span><span class="comment">— Types screen</span>
+<span class="file">│   └── settings.tsx     </span><span class="comment">— Settings screen</span>
 <span class="file">└── _layout.tsx          </span><span class="comment">— Root stack + StopwatchProvider</span>
 
 <span class="dir">components/</span>
@@ -934,11 +941,13 @@
       <h3>State model</h3>
       <p>All state lives in a single <code>AppState</code> managed by <code>useReducer</code>:</p>
       <pre><code>interface AppState {
-  types:                   StopwatchType[];   // all type definitions (built-in + substance + custom)
-  activeStopwatches:       ActiveStopwatch[]; // running instances
-  favoriteTypeIds:         string[];          // ordered favorite IDs
-  plans:                   Plan[];            // plan mode plans
-  showInteractionWarnings: boolean;           // toggle for interaction warning UI (default: true)
+  types:                   StopwatchType[];        // all type definitions (built-in + substance + custom)
+  activeStopwatches:       ActiveStopwatch[];      // running instances
+  favoriteTypeIds:         string[];               // ordered favorite IDs
+  plans:                   Plan[];                 // saved plans
+  showInteractionWarnings: boolean;                // toggle for blocking warning popups (default: true)
+  showInteractionBadges:   boolean;                // toggle for ⚠ badges in type lists (default: true)
+  planOverlayMode:         'markers' | 'curves';  // how toggled-on plans appear on the Live Graph screen
 }</code></pre>
       <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types (<code>isBuiltIn: true</code>) and substance types (<code>isSubstance: true</code>) are always restored from code at hydration and are never saved to AsyncStorage — only custom types are merged from storage. This means bundled data updates automatically when the app version is updated.</div>
 
@@ -1035,7 +1044,7 @@ interface PlanMarker {
       <ol style="display:flex; flex-direction:column; gap:10px; margin:16px 0; padding-left:0; list-style:none;">
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">1</span>
-          <div><strong>iOS App Store release</strong><p>Submit to App Store under Health &amp; Fitness, age rating 17+. Prepare screenshots, metadata, and privacy disclosure (no data leaves the device). See Section 9 for submission strategy.</p></div>
+          <div><strong>iOS App Store release</strong><p>Submit to App Store under Health &amp; Fitness, age rating 17+. Prepare screenshots, metadata, and privacy disclosure (no data leaves the device).</p></div>
         </li>
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">2</span>
@@ -1043,7 +1052,11 @@ interface PlanMarker {
         </li>
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">3</span>
-          <div><strong>Merge Stopwatches + Graph into one screen; promote Plan Mode to a tab</strong><p>Currently the graph lives on a separate tab and Plan Mode is a pushed stack screen. Consider collapsing Stopwatches and Graph into a single scrollable or split view, and giving Plan Mode its own permanent tab — reducing navigation depth and making planning a first-class destination.</p></div>
+          <div><strong>Show interactions table in-app</strong><p>A dedicated interactions screen (or modal) showing a substance × substance matrix for all 16 bundled profiles. Each cell displays the severity badge (☠ Dangerous, ⚠ Unsafe, ⚡ Caution, etc.) color-coded by risk level. Tapping a cell expands the clinical note inline. The view should offer two modes: <strong>All substances</strong> (full matrix, filterable by name) and <strong>Active now</strong> (filtered to only the substances currently running as stopwatches or present in the selected plan). Interactive buttons on each row/column header let users jump directly to that substance's PsychonautWiki page. The screen should be accessible from both the Settings tab and as a quick-access button on the Stopwatches screen when multiple substances are active.</p></div>
+        </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">4</span>
+          <div><strong>UI polish</strong><p>Improve overall visual appeal — typography, spacing, color usage, card design, and transitions. Goal is a polished, trustworthy feel appropriate for a safety-focused tool.</p></div>
         </li>
       </ol>
       <div class="limit-list">
@@ -1058,10 +1071,6 @@ interface PlanMarker {
         <div class="roadmap-item">
           <strong>History log</strong>
           <p>Record of all past runs: start time, stop time, integrated area under the curve.</p>
-        </div>
-        <div class="roadmap-item">
-          <strong>Notifications</strong>
-          <p>Notify the user when a plan entry's scheduled start time arrives. No phase-transition or threshold notifications.</p>
         </div>
         <div class="roadmap-item">
           <strong>Type library sync</strong>
@@ -1083,7 +1092,7 @@ interface PlanMarker {
     </section>
 
     <footer>
-      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.2 &nbsp;·&nbsp; June 2026
+      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.5 &nbsp;·&nbsp; June 2026
     </footer>
 
   </main>

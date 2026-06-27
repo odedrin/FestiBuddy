@@ -1,47 +1,84 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { effectiveElapsed, useStopwatch } from '@/store/StopwatchContext';
 import {
   currentPhase,
-  formatDuration,
   formatElapsed,
+  progressFraction,
   totalDuration,
 } from '@/engine/curveEngine';
-import { Graph } from '@/components/Graph';
-import type { GraphRef, PlanMarker } from '@/components/Graph';
+import { Graph, GraphNavBar } from '@/components/Graph';
+import { EditStopwatchStartModal } from '@/components/EditStopwatchStartModal';
+import { AddStopwatchModal } from '@/components/AddStopwatchModal';
+import type { GraphRef, PlanCurve, PlanMarker } from '@/components/Graph';
 
 const TICK_MS = 1000;
 
-export default function GraphScreen() {
+export default function LiveGraphScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const { state } = useStopwatch();
+  const { state, stopStopwatch, updateStopwatchStartTime } = useStopwatch();
 
   const [now, setNow] = useState(Date.now);
   const [visiblePlanIds, setVisiblePlanIds] = useState<Set<string>>(new Set());
   const graphRef = useRef<GraphRef>(null);
   const [isGraphPanned, setIsGraphPanned] = useState(false);
+  const [isGraphDay, setIsGraphDay] = useState(false);
+
+  // Multi-select state
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  // Edit modal state
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Add stopwatch modal state
+  const [addVisible, setAddVisible] = useState(false);
+
+  // Visible time window (for off-screen indicators)
+  const [visibleWindow, setVisibleWindow] = useState<{ start: number; end: number } | null>(null);
 
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, []);
 
+  // Reset select mode when all stopwatches are gone
+  useEffect(() => {
+    if (state.activeStopwatches.length === 0) {
+      setIsSelectMode(false);
+      setSelectedIds(new Set());
+    }
+  }, [state.activeStopwatches.length]);
+
   const earliestStart = state.activeStopwatches.length > 0
     ? Math.min(...state.activeStopwatches.map(sw => sw.startTime))
     : null;
   const elapsedSinceFirst = earliestStart !== null ? now - earliestStart : null;
 
-  const accent = Colors[colorScheme].tint;
-  const bgColor = isDark ? '#000' : '#F2F2F7';
+  const accent   = isDark ? '#4ECDC4' : Colors[colorScheme].tint;
+  const bgColor  = isDark ? '#000' : '#F2F2F7';
   const textColor = isDark ? '#ECEDEE' : '#11181C';
-  const subColor = isDark ? '#9BA1A6' : '#687076';
-  const cardBg = isDark ? '#1E2022' : '#fff';
+  const subColor  = isDark ? '#9BA1A6' : '#687076';
+  const cardBg    = isDark ? '#1E2022' : '#fff';
   const cardBorder = isDark ? '#2A2D2F' : '#E5E5EA';
+
+  const editingStopwatch = editingId
+    ? state.activeStopwatches.find(sw => sw.id === editingId) ?? null
+    : null;
+  const editingType = editingStopwatch
+    ? state.types.find(t => t.id === editingStopwatch.typeId) ?? null
+    : null;
 
   function togglePlan(planId: string) {
     setVisiblePlanIds(prev => {
@@ -52,215 +89,554 @@ export default function GraphScreen() {
     });
   }
 
-  const planMarkers: PlanMarker[] = [];
-  for (const plan of state.plans) {
-    if (!visiblePlanIds.has(plan.id)) continue;
-    for (const entry of plan.entries) {
-      const tp = state.types.find(t => t.id === entry.typeId);
-      if (!tp) continue;
-      planMarkers.push({
-        startTime: entry.targetTime,
-        label: `${plan.name} · ${tp.name}`,
-        color: tp.color,
-      });
+  const { planMarkers, planCurves } = useMemo(() => {
+    const markers: PlanMarker[] = [];
+    const curves: PlanCurve[]  = [];
+    for (const plan of state.plans) {
+      if (!visiblePlanIds.has(plan.id)) continue;
+      for (const entry of plan.entries) {
+        const tp = state.types.find(t => t.id === entry.typeId);
+        if (!tp) continue;
+        const label = `${plan.name} · ${tp.name}`;
+        if (state.planOverlayMode === 'curves') {
+          curves.push({ type: tp, startTime: entry.targetTime, label });
+        } else {
+          markers.push({ startTime: entry.targetTime, label, color: tp.color });
+        }
+      }
     }
-  }
+    return { planMarkers: markers, planCurves: curves };
+  }, [state.plans, state.types, state.planOverlayMode, visiblePlanIds]);
+
+  // ── Stop (single) with confirmation ─────────────────────────────────────
+  const handleStop = useCallback((id: string) => {
+    Alert.alert('Remove stopwatch', 'Are you sure you want to remove this stopwatch?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: () => stopStopwatch(id) },
+    ]);
+  }, [stopStopwatch]);
+
+  // ── Multi-select handlers ────────────────────────────────────────────────
+  const handleLongPress = useCallback((id: string) => {
+    setIsSelectMode(true);
+    setSelectedIds(new Set([id]));
+  }, []);
+
+  const handleRowPress = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const handleCancelSelect = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleDeleteSelected = useCallback(() => {
+    const count = selectedIds.size;
+    Alert.alert(
+      'Remove stopwatches',
+      `Remove ${count} stopwatch${count > 1 ? 'es' : ''}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            selectedIds.forEach(id => stopStopwatch(id));
+            setIsSelectMode(false);
+            setSelectedIds(new Set());
+          },
+        },
+      ],
+    );
+  }, [selectedIds, stopStopwatch]);
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
 
-      {/* ── Header (fixed, not inside ScrollView) ── */}
-      <View style={styles.header}>
-        <Text style={[styles.screenTitle, { color: subColor }]}>GRAPH</Text>
-        <Text style={[styles.sumValue, { color: textColor }]}>
-          {elapsedSinceFirst !== null ? formatElapsed(elapsedSinceFirst) : '--:--'}
-        </Text>
-        <Text style={[styles.sumLabel, { color: subColor }]}>elapsed</Text>
-      </View>
-
-      {/* ── Graph card (fixed, not inside ScrollView — avoids UIScrollView conflict) ── */}
+      {/* ── Container 1: Graph ── */}
       <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        {/* Compact timer above graph */}
+        <View style={styles.timerRow}>
+          <Text style={[styles.timerLabel, { color: subColor }]}>LIVE GRAPH</Text>
+          <Text style={[styles.timerValue, { color: textColor }]}>
+            {elapsedSinceFirst !== null ? formatElapsed(elapsedSinceFirst) : '--:--:--'}
+          </Text>
+          <Text style={[styles.timerSuffix, { color: subColor }]}>elapsed</Text>
+        </View>
+
         <Graph
           ref={graphRef}
           currentTime={now}
-          height={280}
+          height={220}
           colorScheme={colorScheme}
           planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
+          planCurves={planCurves.length > 0 ? planCurves : undefined}
           onIsPanned={setIsGraphPanned}
+          onIsDay={setIsGraphDay}
+          onViewChange={(s, e) => setVisibleWindow({ start: s, end: e })}
         />
 
-        {isGraphPanned && (
-          <TouchableOpacity
-            style={[styles.backToNowBtn, { backgroundColor: isDark ? '#1E2022' : '#F0F0F0', borderColor: accent }]}
-            onPress={() => graphRef.current?.resetView()}
-          >
-            <Text style={[styles.backToNowText, { color: accent }]}>↩ Back to Now</Text>
-          </TouchableOpacity>
-        )}
-
-        {state.activeStopwatches.length > 0 && (
-          <View style={[styles.legend, { borderTopColor: cardBorder }]}>
-            <View style={styles.legendRow}>
-              <View style={[styles.legendLine, { backgroundColor: Colors[colorScheme].tint }]} />
-              <Text style={[styles.legendLabel, { color: textColor }]}>Sum y(t)</Text>
-            </View>
-
-            {state.activeStopwatches.map(sw => {
-              const type = state.types.find(t => t.id === sw.typeId);
-              if (!type) return null;
-              const elapsed = effectiveElapsed(sw, now);
-              const total = totalDuration(type);
-              const phase = currentPhase(type, elapsed);
-
-              return (
-                <View key={sw.id} style={styles.legendRow}>
-                  <View style={[styles.legendLine, { backgroundColor: type.color }]} />
-                  <Text style={[styles.legendLabel, { color: subColor }]}>{type.name}</Text>
-                  <View style={[styles.phasePill, { borderColor: type.color }]}>
-                    <Text style={[styles.phaseText, { color: type.color }]}>{phase}</Text>
+        {/* Off-screen indicators */}
+        {(() => {
+          if (!visibleWindow) return null;
+          const offLeft = state.activeStopwatches.filter(sw => {
+            const type = state.types.find(t => t.id === sw.typeId);
+            if (!type) return false;
+            return (now - effectiveElapsed(sw, now)) + totalDuration(type) < visibleWindow.start;
+          }).length
+            + planMarkers.filter(m => m.startTime < visibleWindow.start).length
+            + planCurves.filter(c => c.startTime + totalDuration(c.type) < visibleWindow.start).length;
+          const offRight = state.activeStopwatches.filter(sw => {
+            const type = state.types.find(t => t.id === sw.typeId);
+            if (!type) return false;
+            return (now - effectiveElapsed(sw, now)) > visibleWindow.end;
+          }).length
+            + planMarkers.filter(m => m.startTime > visibleWindow.end).length
+            + planCurves.filter(c => c.startTime > visibleWindow.end).length;
+          return (
+            <>
+              {offLeft > 0 && (
+                <View pointerEvents="none" style={[styles.offPillAnchor, { left: 8 }]}>
+                  <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                    <Text style={[styles.offPillText, { color: subColor }]}>‹ {offLeft}</Text>
                   </View>
-                  <Text style={[styles.legendValue, { color: subColor }]}>
-                    {formatElapsed(elapsed)} / {formatDuration(total)}
-                  </Text>
                 </View>
-              );
-            })}
-          </View>
-        )}
+              )}
+              {offRight > 0 && (
+                <View pointerEvents="none" style={[styles.offPillAnchor, { right: 8 }]}>
+                  <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                    <Text style={[styles.offPillText, { color: subColor }]}>{offRight} ›</Text>
+                  </View>
+                </View>
+              )}
+            </>
+          );
+        })()}
+
+        <GraphNavBar graphRef={graphRef} isDark={isDark} tint={accent} isPanned={isGraphPanned} isDay={isGraphDay} />
       </View>
 
-      {/* ── Scrollable area below the graph ── */}
-      <ScrollView
-        contentContainerStyle={styles.bottomContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {state.plans.length > 0 && (
-          <View style={styles.planToggles}>
-            <Text style={[styles.planTogglesLabel, { color: subColor }]}>Overlay plans</Text>
-            <View style={styles.planChips}>
-              {state.plans.map(plan => {
-                const isVisible = visiblePlanIds.has(plan.id);
-                return (
-                  <TouchableOpacity
-                    key={plan.id}
-                    style={[
-                      styles.planChip,
-                      {
-                        backgroundColor: isVisible ? accent : (isDark ? '#1E2022' : '#F0F0F0'),
-                        borderColor: isVisible ? accent : cardBorder,
-                      },
-                    ]}
-                    onPress={() => togglePlan(plan.id)}
-                  >
-                    <Text style={[styles.planChipText, { color: isVisible ? '#fff' : subColor }]}>
-                      {isVisible ? '☑' : '☐'} {plan.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </View>
-        )}
+      {/* ── Container 2: Overlay plans (only when plans exist) ── */}
+      {state.plans.length > 0 && (
+        <View style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <Text style={[styles.overlayLabel, { color: subColor }]}>Overlay plans</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.overlayChips}
+          >
+            {state.plans.map(plan => {
+              const isVisible = visiblePlanIds.has(plan.id);
+              return (
+                <TouchableOpacity
+                  key={plan.id}
+                  style={[
+                    styles.planChip,
+                    {
+                      backgroundColor: isVisible ? accent : (isDark ? '#2A2D2F' : '#F0F0F0'),
+                      borderColor: isVisible ? accent : cardBorder,
+                    },
+                  ]}
+                  onPress={() => togglePlan(plan.id)}
+                >
+                  <Text style={[styles.planChipText, { color: isVisible ? '#fff' : subColor }]}>
+                    {isVisible ? '☑' : '☐'} {plan.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        </View>
+      )}
 
-        <TouchableOpacity
-          style={[styles.planBtn, { borderColor: accent }]}
-          onPress={() => router.push('/plan')}
+      {/* ── Container 3: Stopwatches legend (flex: 1, internally scrollable) ── */}
+      <View style={[styles.legendCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+
+        {/* Sticky header */}
+        <View style={[styles.legendHeader, { borderBottomColor: cardBorder }]}>
+          <Text style={[styles.legendTitle, { color: subColor }]}>
+            {isSelectMode
+              ? `${selectedIds.size} selected`
+              : 'Running now'}
+          </Text>
+          <View style={styles.legendHeaderActions}>
+            {isSelectMode && selectedIds.size > 0 && (
+              <TouchableOpacity onPress={handleDeleteSelected} style={styles.headerBtn}>
+                <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Remove</Text>
+              </TouchableOpacity>
+            )}
+            {state.activeStopwatches.length > 0 && (
+              <TouchableOpacity
+                onPress={isSelectMode ? handleCancelSelect : () => setIsSelectMode(true)}
+                style={styles.headerBtn}
+              >
+                <Text style={[styles.headerBtnText, { color: accent }]}>
+                  {isSelectMode ? 'Cancel' : 'Select'}
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {/* Scrollable stopwatch rows */}
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.legendList}
         >
-          <Text style={[styles.planBtnText, { color: accent }]}>Plan Mode</Text>
-        </TouchableOpacity>
+          {state.activeStopwatches.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={[styles.emptyText, { color: subColor }]}>
+                Start stopwatches on the Stopwatches tab to see them here.
+              </Text>
+            </View>
+          ) : (
+            state.activeStopwatches.map(sw => {
+              const type = state.types.find(t => t.id === sw.typeId);
+              if (!type) return null;
+              const elapsed   = effectiveElapsed(sw, now);
+              const total     = totalDuration(type);
+              const phase     = currentPhase(type, elapsed);
+              const progress  = progressFraction(type, elapsed);
+              const isSelected = selectedIds.has(sw.id);
 
-        {state.activeStopwatches.length === 0 && (
-          <View style={styles.hint}>
-            <Text style={[styles.hintText, { color: subColor }]}>
-              Start stopwatches on the first tab to see the superposition here.
-            </Text>
-            <Text style={[styles.hintNote, { color: subColor }]}>
-              The dashed portion shows the predicted future curve.
-            </Text>
-          </View>
-        )}
-      </ScrollView>
+              const onsetW  = type.onsetDuration  / total;
+              const comeupW = type.comeupDuration / total;
+              const peakW   = type.peakDuration   / total;
+
+              return (
+                <TouchableOpacity
+                  key={sw.id}
+                  style={[
+                    styles.legendRow,
+                    { borderBottomColor: cardBorder },
+                    isSelected && { backgroundColor: isDark ? '#1C2B2B' : '#E8F8F7' },
+                  ]}
+                  onPress={isSelectMode ? () => handleRowPress(sw.id) : undefined}
+                  onLongPress={() => handleLongPress(sw.id)}
+                  activeOpacity={isSelectMode ? 0.6 : 1}
+                >
+                  {/* Color stripe */}
+                  <View style={[styles.colorStripe, { backgroundColor: type.color }]} />
+
+                  {/* Info block */}
+                  <View style={styles.rowInfo}>
+                    <View style={styles.rowTopLine}>
+                      <Text style={[styles.rowName, { color: textColor }]} numberOfLines={1}>
+                        {type.name}
+                      </Text>
+                      <View style={[styles.phasePill, { borderColor: type.color }]}>
+                        <Text style={[styles.phaseText, { color: type.color }]}>{phase}</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.rowTime, { color: subColor }]}>
+                      {formatElapsed(elapsed)} / {formatElapsed(total)}
+                    </Text>
+                    {/* Phase progress bar */}
+                    <View style={styles.phaseTrack}>
+                      <View style={{ width: `${onsetW * 100}%`, height: '100%', backgroundColor: type.color, opacity: 0.3 }} />
+                      <View style={{ width: `${comeupW * 100}%`, height: '100%', backgroundColor: type.color, opacity: 0.6 }} />
+                      <View style={{ width: `${peakW * 100}%`, height: '100%', backgroundColor: type.color, opacity: 1 }} />
+                      <View style={{ flex: 1, height: '100%', backgroundColor: type.color, opacity: 0.35 }} />
+                      <View style={[styles.phaseCursor, { left: `${progress * 100}%` as any, backgroundColor: isDark ? '#fff' : '#000' }]} />
+                    </View>
+                  </View>
+
+                  {/* Actions or checkbox */}
+                  {isSelectMode ? (
+                    <View style={[
+                      styles.checkbox,
+                      { borderColor: isSelected ? accent : cardBorder },
+                      isSelected && { backgroundColor: accent },
+                    ]}>
+                      {isSelected && <Text style={styles.checkmark}>✓</Text>}
+                    </View>
+                  ) : (
+                    <View style={styles.rowActions}>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { borderColor: cardBorder }]}
+                        onPress={() => setEditingId(sw.id)}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Text style={[styles.actionBtnText, { color: subColor }]}>✎</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.actionBtn, { borderColor: cardBorder }]}
+                        onPress={() => handleStop(sw.id)}
+                        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                      >
+                        <Text style={[styles.actionBtnText, { color: '#FF6B6B' }]}>✕</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              );
+            })
+          )}
+        </ScrollView>
+      </View>
+
+      {/* FAB: add stopwatch */}
+      <TouchableOpacity
+        style={[styles.fab, { backgroundColor: accent }]}
+        onPress={() => setAddVisible(true)}
+      >
+        <Text style={styles.fabText}>+</Text>
+      </TouchableOpacity>
+
+      {/* Edit start-time modal */}
+      <EditStopwatchStartModal
+        visible={!!editingId}
+        stopwatch={editingStopwatch}
+        type={editingType}
+        currentTime={now}
+        isDark={isDark}
+        onSave={(id, newStartTime) => updateStopwatchStartTime(id, newStartTime)}
+        onClose={() => setEditingId(null)}
+      />
+
+      {/* Add stopwatch modal */}
+      <AddStopwatchModal
+        visible={addVisible}
+        isDark={isDark}
+        onClose={() => setAddVisible(false)}
+      />
 
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-
-  header: { alignItems: 'center', paddingTop: 16, paddingBottom: 16, gap: 4 },
-  screenTitle: { fontSize: 12, fontWeight: '600', letterSpacing: 1.2, marginBottom: 4 },
-  sumValue: {
-    fontSize: 52,
-    fontWeight: '200',
-    fontVariant: ['tabular-nums'],
-    letterSpacing: -1.5,
-    lineHeight: 58,
+  root: {
+    flex: 1,
+    padding: 12,
+    gap: 8,
   },
-  sumLabel: { fontSize: 13 },
 
+  // ── Container 1: graph ──────────────────────────────────────────────────
   graphCard: {
-    marginHorizontal: 12,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    paddingTop: 12,
+    paddingTop: 10,
   },
-  legend: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+  timerRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
     gap: 8,
-  },
-  legendRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  legendLine: { width: 20, height: 3, borderRadius: 1.5 },
-  legendLabel: { fontSize: 13, fontWeight: '500' },
-  phasePill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, borderWidth: 1 },
-  phaseText: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
-  legendValue: { flex: 1, fontSize: 12, fontVariant: ['tabular-nums'], fontWeight: '300', textAlign: 'right' },
-
-  backToNowBtn: {
-    alignSelf: 'center',
-    marginTop: 6,
-    marginBottom: 4,
     paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 14,
-    borderWidth: 1,
+    paddingBottom: 8,
   },
-  backToNowText: { fontSize: 13, fontWeight: '600' },
+  timerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  timerValue: {
+    fontSize: 24,
+    fontWeight: '300',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -0.5,
+  },
+  timerSuffix: {
+    fontSize: 12,
+  },
 
-  // Below-graph scrollable section
-  bottomContent: { paddingBottom: 40 },
-  planToggles: { marginHorizontal: 12, marginTop: 12, gap: 8 },
-  planTogglesLabel: {
+
+  // ── Container 2: overlay plans ─────────────────────────────────────────
+  overlayCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 10,
+    paddingLeft: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  overlayLabel: {
     fontSize: 11,
     fontWeight: '600',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
     textTransform: 'uppercase',
-    paddingHorizontal: 4,
+    flexShrink: 0,
   },
-  planChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  overlayChips: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 14,
+  },
   planChip: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingVertical: 6,
+    borderRadius: 16,
     borderWidth: 1.5,
   },
-  planChipText: { fontSize: 13, fontWeight: '500' },
-  planBtn: {
-    alignSelf: 'center',
-    marginTop: 12,
-    marginBottom: 4,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
+  planChipText: { fontSize: 12, fontWeight: '500' },
+
+  // ── Container 3: legend ────────────────────────────────────────────────
+  legendCard: {
+    flex: 1,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  planBtnText: { fontSize: 14, fontWeight: '600' },
-  hint: { marginTop: 24, paddingHorizontal: 32, gap: 8, alignItems: 'center' },
-  hintText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
-  hintNote: { fontSize: 12, textAlign: 'center', opacity: 0.7 },
+  legendHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  legendTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  legendHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+  },
+  headerBtn: { paddingVertical: 2 },
+  headerBtnText: { fontSize: 14, fontWeight: '500' },
+  legendList: { paddingBottom: 8 },
+
+  emptyState: { padding: 28, alignItems: 'center' },
+  emptyText: { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+
+  // Legend rows
+  legendRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingRight: 12,
+    gap: 10,
+  },
+  colorStripe: {
+    width: 4,
+    alignSelf: 'stretch',
+  },
+  rowInfo: {
+    flex: 1,
+    paddingVertical: 10,
+  },
+  rowTopLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 3,
+    flexWrap: 'nowrap',
+  },
+  rowName: {
+    fontSize: 14,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  phasePill: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+    flexShrink: 0,
+  },
+  phaseText: {
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+  },
+  rowTime: {
+    fontSize: 12,
+    fontVariant: ['tabular-nums'],
+    marginBottom: 5,
+  },
+  phaseTrack: {
+    height: 5,
+    borderRadius: 3,
+    flexDirection: 'row',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  phaseCursor: {
+    position: 'absolute',
+    top: -2,
+    width: 2,
+    height: 9,
+    borderRadius: 1,
+    marginLeft: -1,
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  fabText: { color: '#fff', fontSize: 26, fontWeight: '300', lineHeight: 30 },
+  rowActions: {
+    flexDirection: 'row',
+    gap: 6,
+    flexShrink: 0,
+  },
+  actionBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionBtnText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  checkmark: {
+    color: '#000',
+    fontSize: 12,
+    fontWeight: '800',
+  },
+
+  // Off-screen indicator pills
+  offPillAnchor: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  offPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  offPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

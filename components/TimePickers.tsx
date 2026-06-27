@@ -2,12 +2,16 @@
  * Shared picker components used by AddPlanEntryModal, EditPlanEntryModal,
  * and EditStopwatchStartModal.
  *
- * ClockPicker  — HH:MM selector with direct TextInput for hours and minutes.
- * ValueStepper — % selector with direct TextInput for the percentage.
+ * ClockPicker     — HH:MM drum-roll (circular, scrollable + tappable + keyboard).
+ *                   Tapping either center wheel opens a combined HHMM keyboard edit:
+ *                   digits barrel-shift from right, so typing 1·4·3·0 → 14:30.
+ *                   Optionally shows a day-offset column.
+ * ValueStepper    — % selector with direct TextInput for the percentage.
  * TimelineSummary — Start → Peak → End timeline strip.
  */
-import React, { useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -34,8 +38,221 @@ export function toAbsMs(now: number, hour: number, minute: number): number {
 }
 
 // ---------------------------------------------------------------------------
+// Wheel constants
+// ---------------------------------------------------------------------------
+
+const ITEM_H  = 44;   // row height in px
+const VISIBLE = 3;    // number of visible rows (selected is in the middle)
+const REPEAT  = 3;    // how many times to repeat for circular illusion
+
+const HOURS   = Array.from({ length: 24 }, (_, i) => pad2(i));
+const MINUTES = Array.from({ length: 60 }, (_, i) => pad2(i));
+
+function makeExt(items: string[]): string[] {
+  return Array.from({ length: items.length * REPEAT }, (_, i) => items[i % items.length]);
+}
+
+const EXT_HOURS   = makeExt(HOURS);
+const EXT_MINUTES = makeExt(MINUTES);
+
+// ---------------------------------------------------------------------------
+// WheelPicker — single scrollable column
+// ---------------------------------------------------------------------------
+
+interface WheelPickerProps {
+  /** Original (non-extended) item labels */
+  items: string[];
+  /** Extended item list (for circular use makeExt; for finite pass same as items) */
+  extItems: string[];
+  selectedIndex: number;
+  onChange: (index: number) => void;
+  isDark: boolean;
+  /** Whether to use wrap-around distance for opacity calculation */
+  circular?: boolean;
+  /** Called when the currently-selected (center) item is tapped */
+  onCenterTap?: () => void;
+  width?: number;
+  /** Font size for the selected (center) item. Default 34. */
+  selectedFontSize?: number;
+  /** Font size for non-selected items. Default 22. */
+  otherFontSize?: number;
+}
+
+function WheelPicker({
+  items,
+  extItems,
+  selectedIndex,
+  onChange,
+  isDark,
+  circular = false,
+  onCenterTap,
+  width = 76,
+  selectedFontSize = 34,
+  otherFontSize = 22,
+}: WheelPickerProps) {
+  const scrollRef = useRef<ScrollView>(null);
+  const n         = items.length;
+
+  function extIdx(logicalIdx: number): number {
+    return circular ? Math.floor(REPEAT / 2) * n + logicalIdx : logicalIdx;
+  }
+
+  const [localIndex, setLocalIndex] = useState(selectedIndex);
+  // Ref so the sync effect can cancel the mount timer before it fires
+  const initTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const textColor = isDark ? '#ECEDEE' : '#11181C';
+  const subColor  = isDark ? '#9BA1A6' : '#687076';
+  const selBg     = isDark ? '#2A2D2F' : '#F0F0F2';
+  const selBorder = isDark ? '#3A3D3F' : '#C7C7CC';
+
+  // Scroll to initial position on mount — deferred 60ms so the ScrollView has measured
+  useEffect(() => {
+    initTimerRef.current = setTimeout(() => {
+      initTimerRef.current = null;
+      scrollRef.current?.scrollTo({ y: extIdx(selectedIndex) * ITEM_H, animated: false });
+    }, 60);
+    return () => {
+      if (initTimerRef.current !== null) clearTimeout(initTimerRef.current);
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync from parent when selectedIndex changes externally
+  useEffect(() => {
+    if (selectedIndex !== localIndex) {
+      setLocalIndex(selectedIndex);
+      // If the mount timer hasn't fired yet, cancel it and jump without animation
+      // (this IS the initial position — animating from 0 would look wrong)
+      if (initTimerRef.current !== null) {
+        clearTimeout(initTimerRef.current);
+        initTimerRef.current = null;
+        scrollRef.current?.scrollTo({ y: extIdx(selectedIndex) * ITEM_H, animated: false });
+      } else {
+        scrollRef.current?.scrollTo({ y: extIdx(selectedIndex) * ITEM_H, animated: true });
+      }
+    }
+  }, [selectedIndex]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleScrollEnd(e: any) {
+    const y      = e.nativeEvent.contentOffset.y;
+    const rawIdx = Math.max(0, Math.min(extItems.length - 1, Math.round(y / ITEM_H)));
+    const actual = circular ? rawIdx % n : rawIdx;
+    setLocalIndex(actual);
+    onChange(actual);
+  }
+
+  return (
+    <View style={{ width, height: ITEM_H * VISIBLE, position: 'relative' }}>
+      {/* Selection highlight */}
+      <View
+        pointerEvents="none"
+        style={[
+          wheelSt.selBox,
+          { top: ITEM_H * Math.floor(VISIBLE / 2), height: ITEM_H, backgroundColor: selBg, borderColor: selBorder },
+        ]}
+      />
+
+      <ScrollView
+        ref={scrollRef}
+        showsVerticalScrollIndicator={false}
+        snapToInterval={ITEM_H}
+        decelerationRate="fast"
+        onMomentumScrollEnd={handleScrollEnd}
+        contentContainerStyle={{ paddingVertical: ITEM_H * Math.floor(VISIBLE / 2) }}
+        style={{ flex: 1 }}
+      >
+        {extItems.map((item, i) => {
+          const actualI  = circular ? i % n : i;
+          const dist     = Math.abs(actualI - localIndex);
+          const wrapDist = circular ? Math.min(dist, n - dist) : dist;
+          const opacity  = wrapDist === 0 ? 1 : wrapDist === 1 ? 0.45 : 0.2;
+          const fontSize = wrapDist === 0 ? selectedFontSize : otherFontSize;
+          const isCenter = wrapDist === 0;
+
+          return (
+            <TouchableOpacity
+              key={i}
+              style={wheelSt.item}
+              onPress={() => {
+                if (isCenter && onCenterTap) {
+                  onCenterTap();
+                } else {
+                  scrollRef.current?.scrollTo({ y: i * ITEM_H, animated: true });
+                  setLocalIndex(actualI);
+                  onChange(actualI);
+                }
+              }}
+              activeOpacity={0.6}
+            >
+              <Text
+                style={{
+                  color: isCenter ? textColor : subColor,
+                  opacity,
+                  fontSize,
+                  fontWeight: '300',
+                  fontVariant: ['tabular-nums'],
+                }}
+                numberOfLines={1}
+                adjustsFontSizeToFit
+              >
+                {item}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
+}
+
+const wheelSt = StyleSheet.create({
+  selBox: {
+    position: 'absolute',
+    left: 4,
+    right: 4,
+    borderRadius: 10,
+    borderWidth: 1,
+    zIndex: 0,
+  },
+  item: {
+    height: ITEM_H,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hiddenInput: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Day column helpers
+// ---------------------------------------------------------------------------
+
+function makeDayItems(range: number): string[] {
+  const items: string[] = [];
+  for (let d = -range; d <= range; d++) {
+    if (d === 0)       items.push('Today');
+    else if (d === 1)  items.push('+1d');
+    else if (d === -1) items.push('−1d');
+    else if (d > 0)    items.push(`+${d}d`);
+    else               items.push(`${d}d`);
+  }
+  return items;
+}
+
+// ---------------------------------------------------------------------------
 // ClockPicker
 // ---------------------------------------------------------------------------
+
+export interface ClockPickerHandle {
+  /** Returns the hour currently shown (including any uncommitted keyboard input). */
+  getHour: () => number;
+  /** Returns the minute currently shown (including any uncommitted keyboard input). */
+  getMinute: () => number;
+}
 
 interface ClockPickerProps {
   hour: number;
@@ -44,114 +261,183 @@ interface ClockPickerProps {
   label: string;
   onHour: (h: number) => void;
   onMinute: (m: number) => void;
+  /** If provided, a day-offset column is shown to the left of hours */
+  dayOffset?: number;
+  onDayOffset?: (d: number) => void;
+  /** Half-range for day column (default 3 → shows −3d … Today … +3d) */
+  dayRange?: number;
 }
 
-export function ClockPicker({ hour, minute, isDark, label, onHour, onMinute }: ClockPickerProps) {
-  const textColor = isDark ? '#ECEDEE' : '#11181C';
+export const ClockPicker = forwardRef<ClockPickerHandle, ClockPickerProps>(function ClockPicker({
+  hour,
+  minute,
+  isDark,
+  label,
+  onHour,
+  onMinute,
+  dayOffset,
+  onDayOffset,
+  dayRange = 3,
+}, ref) {
   const subColor  = isDark ? '#9BA1A6' : '#687076';
-  const btnBg     = isDark ? '#2A2D2F' : '#E5E5EA';
-  const inputBg   = isDark ? '#2A2D2F' : '#F0F0F2';
+  const textColor = isDark ? '#ECEDEE' : '#11181C';
+  const selBg     = isDark ? '#2A2D2F' : '#F0F0F2';
+  const selBorder = isDark ? '#3A3D3F' : '#C7C7CC';
 
-  // Local strings so the user can type freely; commit on blur/submit
-  const [hourStr,   setHourStr]   = useState(pad2(hour));
-  const [minuteStr, setMinuteStr] = useState(pad2(minute));
+  const showDay   = dayOffset !== undefined && onDayOffset !== undefined;
+  const dayItems  = showDay ? makeDayItems(dayRange) : [];
+  const daySelIdx = showDay ? (dayOffset! + dayRange) : 0;
 
-  // Sync when props change (e.g. ±button presses from outside)
-  useEffect(() => setHourStr(pad2(hour)),   [hour]);
-  useEffect(() => setMinuteStr(pad2(minute)), [minute]);
+  // ── HHMM keyboard editing ────────────────────────────────────────────────
+  // digits = [H_tens, H_ones, M_tens, M_ones]
+  // Each keypress barrel-shifts from the right: [d1, d2, d3, newKey]
+  // So typing 1·4·3·0 builds 14:30.
+  const [hhmmEditing, setHhmmEditing] = useState(false);
+  const [digits, setDigits]           = useState<[string, string, string, string]>(['0', '0', '0', '0']);
+  const hiddenInputRef                = useRef<TextInput>(null);
 
-  function commitHour(str: string) {
-    const n = parseInt(str, 10);
-    const v = isNaN(n) ? hour : clampH(n);
-    onHour(v);
-    setHourStr(pad2(v));
+  function startHhmmEdit() {
+    setDigits([
+      Math.floor(hour / 10).toString(),
+      (hour % 10).toString(),
+      Math.floor(minute / 10).toString(),
+      (minute % 10).toString(),
+    ]);
+    setHhmmEditing(true);
+    setTimeout(() => hiddenInputRef.current?.focus(), 30);
   }
 
-  function commitMinute(str: string) {
-    const n = parseInt(str, 10);
-    const v = isNaN(n) ? minute : clampM(n);
-    onMinute(v);
-    setMinuteStr(pad2(v));
+  function handleHhmmKeyPress({ nativeEvent: { key } }: any) {
+    if (/^[0-9]$/.test(key)) {
+      // Shift left, new digit enters from the right
+      setDigits(([d0, d1, d2, _d3]) => [d1, d2, _d3, key]);
+    }
   }
+
+  function commitHhmm() {
+    const [d0, d1, d2, d3] = digits;
+    const h = parseInt(d0 + d1, 10);
+    const m = parseInt(d2 + d3, 10);
+    if (!isNaN(h)) onHour(Math.min(h, 23));
+    if (!isNaN(m)) onMinute(Math.min(m, 59));
+    setHhmmEditing(false);
+  }
+
+  // ── Imperative handle — lets modals read the pending value at save time ──
+  useImperativeHandle(ref, () => ({
+    getHour: () => {
+      if (hhmmEditing) {
+        const h = parseInt(digits[0] + digits[1], 10);
+        return isNaN(h) ? hour : Math.min(h, 23);
+      }
+      return hour;
+    },
+    getMinute: () => {
+      if (hhmmEditing) {
+        const m = parseInt(digits[2] + digits[3], 10);
+        return isNaN(m) ? minute : Math.min(m, 59);
+      }
+      return minute;
+    },
+  }), [hhmmEditing, digits, hour, minute]);
 
   return (
     <View style={styles.clockPicker}>
       <Text style={[styles.pickerLabel, { color: subColor }]}>{label}</Text>
       <View style={styles.pickerRow}>
 
-        {/* ── Hours ── */}
-        <View style={styles.pickerCol}>
-          <TouchableOpacity
-            style={[styles.pickerBtn, { backgroundColor: btnBg }]}
-            onPress={() => onHour(clampH(hour + 1))}
+        {/* Day column (optional) */}
+        {showDay && (
+          <>
+            <WheelPicker
+              items={dayItems}
+              extItems={dayItems}
+              selectedIndex={daySelIdx}
+              onChange={idx => onDayOffset!(idx - dayRange)}
+              isDark={isDark}
+              circular={false}
+              width={72}
+              selectedFontSize={18}
+              otherFontSize={13}
+            />
+            <Text style={[styles.pickerSep, { color: textColor }]}> </Text>
+          </>
+        )}
+
+        {/* HH:MM block — the two wheels, overlaid by HHMM edit when active */}
+        <View>
+          {/* Wheels — hidden (but still rendered so positions are maintained) */}
+          <View
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4, opacity: hhmmEditing ? 0 : 1 }}
+            pointerEvents={hhmmEditing ? 'none' : 'auto'}
           >
-            <Text style={[styles.pickerArrow, { color: subColor }]}>▲</Text>
-          </TouchableOpacity>
-
-          <TextInput
-            style={[styles.pickerDigit, { color: textColor, backgroundColor: inputBg }]}
-            value={hourStr}
-            onChangeText={setHourStr}
-            onEndEditing={() => commitHour(hourStr)}
-            onSubmitEditing={() => commitHour(hourStr)}
-            keyboardType="number-pad"
-            maxLength={2}
-            selectTextOnFocus
-            textAlign="center"
-          />
-
-          <TouchableOpacity
-            style={[styles.pickerBtn, { backgroundColor: btnBg }]}
-            onPress={() => onHour(clampH(hour - 1))}
-          >
-            <Text style={[styles.pickerArrow, { color: subColor }]}>▼</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.pickerColon, { color: textColor }]}>:</Text>
-
-        {/* ── Minutes ── */}
-        <View style={styles.pickerCol}>
-          <View style={styles.minuteRow}>
-            {[+15, +5, +1].map(d => (
-              <TouchableOpacity
-                key={d}
-                style={[styles.pickerBtn, styles.minuteBtn, { backgroundColor: btnBg }]}
-                onPress={() => onMinute(clampM(minute + d))}
-              >
-                <Text style={[styles.minuteBtnText, { color: subColor }]}>+{d}</Text>
-              </TouchableOpacity>
-            ))}
+            <WheelPicker
+              items={HOURS}
+              extItems={EXT_HOURS}
+              selectedIndex={hour}
+              onChange={onHour}
+              isDark={isDark}
+              circular
+              onCenterTap={startHhmmEdit}
+              width={76}
+            />
+            <Text style={[styles.pickerColon, { color: textColor }]}>:</Text>
+            <WheelPicker
+              items={MINUTES}
+              extItems={EXT_MINUTES}
+              selectedIndex={minute}
+              onChange={onMinute}
+              isDark={isDark}
+              circular
+              onCenterTap={startHhmmEdit}
+              width={76}
+            />
           </View>
 
-          <TextInput
-            style={[styles.pickerDigit, { color: textColor, backgroundColor: inputBg }]}
-            value={minuteStr}
-            onChangeText={setMinuteStr}
-            onEndEditing={() => commitMinute(minuteStr)}
-            onSubmitEditing={() => commitMinute(minuteStr)}
-            keyboardType="number-pad"
-            maxLength={2}
-            selectTextOnFocus
-            textAlign="center"
-          />
+          {/* HHMM keyboard overlay — absolutely fills the HH:MM block */}
+          {hhmmEditing && (
+            <View
+              style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}
+            >
+              {/* Center-row highlight (mirrors the WheelPicker selBox) */}
+              <View
+                pointerEvents="none"
+                style={{
+                  position: 'absolute',
+                  left: 4, right: 4,
+                  top: ITEM_H * Math.floor(VISIBLE / 2),
+                  height: ITEM_H,
+                  backgroundColor: selBg,
+                  borderColor: selBorder,
+                  borderWidth: 1,
+                  borderRadius: 10,
+                }}
+              />
 
-          <View style={styles.minuteRow}>
-            {[-15, -5, -1].map(d => (
-              <TouchableOpacity
-                key={d}
-                style={[styles.pickerBtn, styles.minuteBtn, { backgroundColor: btnBg }]}
-                onPress={() => onMinute(clampM(minute + d))}
-              >
-                <Text style={[styles.minuteBtnText, { color: subColor }]}>{d}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+              {/* Four-digit display */}
+              <Text style={[styles.hhmmDisplay, { color: textColor }]}>
+                {digits[0]}{digits[1]}:{digits[2]}{digits[3]}
+              </Text>
+
+              {/* Hidden TextInput that captures keyboard input */}
+              <TextInput
+                ref={hiddenInputRef}
+                style={wheelSt.hiddenInput}
+                value=""
+                onChangeText={() => {}}
+                onKeyPress={handleHhmmKeyPress}
+                onBlur={commitHhmm}
+                onSubmitEditing={commitHhmm}
+                keyboardType="number-pad"
+                caretHidden
+              />
+            </View>
+          )}
         </View>
       </View>
     </View>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // ValueStepper
@@ -173,7 +459,6 @@ export function ValueStepper({ value, max, isDark, onChange }: ValueStepperProps
   const toPct = (v: number) => Math.round((v / max) * 100);
   const [pctStr, setPctStr] = useState(toPct(value).toString());
 
-  // Sync when props change (e.g. ±button presses)
   useEffect(() => setPctStr(toPct(value).toString()), [value, max]);
 
   function commitPct(str: string) {
@@ -276,24 +561,16 @@ export function TimelineSummary({ type, startMs, isDark }: TimelineSummaryProps)
 export const pickerStyles = StyleSheet.create({
   clockPicker: { gap: 10 },
   pickerLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase' },
-  pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  pickerCol: { alignItems: 'center', gap: 4 },
-  pickerBtn: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, alignItems: 'center', minWidth: 36 },
-  pickerArrow: { fontSize: 12, fontWeight: '600' },
-  pickerDigit: {
-    fontSize: 44,
-    fontWeight: '200',
+  pickerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
+  pickerColon: { fontSize: 34, fontWeight: '200', lineHeight: 44, marginBottom: 2 },
+  pickerSep:   { fontSize: 20, fontWeight: '200', opacity: 0.3 },
+  hhmmDisplay: {
+    fontSize: 34,
+    fontWeight: '300',
     fontVariant: ['tabular-nums'],
-    lineHeight: 52,
-    minWidth: 70,
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
+    textAlign: 'center',
+    letterSpacing: 3,
   },
-  pickerColon: { fontSize: 44, fontWeight: '200', lineHeight: 52, marginTop: -8 },
-  minuteRow: { flexDirection: 'row', gap: 4 },
-  minuteBtn: { minWidth: 40 },
-  minuteBtnText: { fontSize: 11, fontWeight: '600' },
   valueStepper: { gap: 8 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   valueBtn: { minWidth: 44 },
@@ -309,6 +586,7 @@ export const pickerStyles = StyleSheet.create({
     paddingVertical: 4,
   },
   valuePctSign: { fontSize: 20, fontWeight: '400' },
+  pickerBtn: { paddingHorizontal: 8, paddingVertical: 6, borderRadius: 8, alignItems: 'center', minWidth: 36 },
   timeline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   tlItem: { alignItems: 'center', gap: 2, minWidth: 60 },
   tlDot: { width: 8, height: 8, borderRadius: 4 },
@@ -317,6 +595,5 @@ export const pickerStyles = StyleSheet.create({
   tlLine: { flex: 1, height: 1.5, opacity: 0.25, marginBottom: 14 },
 });
 
-// Re-export as `styles` so the component-local StyleSheet.create calls above compile
 const styles = pickerStyles;
 export default styles;

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { evaluate, formatDuration, totalDuration } from '@/engine/curveEngine';
+import { INTERACTION_COLOR, type InteractionStatus } from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 import Svg, { Path, Line } from 'react-native-svg';
 
@@ -25,6 +26,8 @@ interface Props {
   onHide?: (typeId: string) => void;
   /** Label shown on the hide button. Defaults to "Hide". Pass "Unhide" for the hidden section. */
   hideLabel?: string;
+  /** Worst interaction status vs currently active stopwatches, if any. */
+  warningStatus?: InteractionStatus;
 }
 
 /** Sparkline preview of f(t) for a single type */
@@ -56,7 +59,7 @@ function MiniCurve({ type }: { type: StopwatchType }) {
   );
 }
 
-export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, onStart, onEdit, onDelete, onToggleFavorite, onHide, hideLabel = 'Hide' }: Props) {
+export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, onStart, onEdit, onDelete, onToggleFavorite, onHide, hideLabel = 'Hide', warningStatus }: Props) {
   const textColor = isDark ? '#ECEDEE' : '#11181C';
   const subColor  = isDark ? '#9BA1A6' : '#687076';
   const cardBg    = isDark ? '#1E2022' : '#F5F5F7';
@@ -70,6 +73,20 @@ export function TypeCard({ type, isDark, isFavorite, activeCount, dragHandle, on
       <View style={[styles.stripe, { backgroundColor: type.color }]} />
 
       <View style={styles.body}>
+        {/* Interaction warning badge — top-right corner */}
+        {warningStatus && (() => {
+          const wc = INTERACTION_COLOR[warningStatus];
+          const icon =
+            warningStatus === 'Low Risk & Synergy'  ? '↑' :
+            warningStatus === 'Low Risk & Decrease' ? '↓' :
+            warningStatus === 'Low Risk & No Synergy' ? '▲' : '⚠';
+          return (
+            <View style={[styles.warnCorner, { backgroundColor: wc + '22', borderColor: wc }]}>
+              <Text style={[styles.warnCornerText, { color: wc }]}>{icon}</Text>
+            </View>
+          );
+        })()}
+
         {/* Name + duration */}
         <View style={styles.topRow}>
           <View style={styles.nameBlock}>
@@ -309,6 +326,22 @@ const styles = StyleSheet.create({
   },
   deleteText: {
     fontSize: 12,
+    fontWeight: '700',
+  },
+  warnCorner: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  warnCornerText: {
+    fontSize: 11,
     fontWeight: '700',
   },
 });

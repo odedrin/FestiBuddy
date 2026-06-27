@@ -286,9 +286,9 @@ export const INTERACTION_SEVERITY: Record<InteractionStatus, number> = {
   Dangerous: 0,
   Unsafe: 1,
   Caution: 2,
-  'Low Risk & No Synergy': 3,
+  'Low Risk & Synergy': 3,
   'Low Risk & Decrease': 4,
-  'Low Risk & Synergy': 5,
+  'Low Risk & No Synergy': 5,
 };
 
 /** Colour associated with each status (for UI badges). */

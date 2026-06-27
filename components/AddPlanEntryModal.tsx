@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { formatOffset } from '@/utils/formatOffset';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   SectionList,
   StyleSheet,
@@ -18,10 +20,18 @@ import {
 } from '@/engine/curveEngine';
 import {
   ClockPicker,
+  ClockPickerHandle,
   TimelineSummary,
   ValueStepper,
   toAbsMs,
 } from '@/components/TimePickers';
+import {
+  getInteraction,
+  INTERACTION_COLOR,
+  INTERACTION_SEVERITY,
+  type Interaction,
+  type InteractionStatus,
+} from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 
 // ---------------------------------------------------------------------------
@@ -37,6 +47,8 @@ interface Props {
   isDark: boolean;
   /** Current wall-clock time in ms */
   now: number;
+  /** Substance type IDs already in the plan — used to show interaction badges */
+  existingSubstanceIds?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -44,14 +56,17 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 function TypeRow({
-  item, selected, isDark, onSelect,
+  item, selected, isDark, onSelect, warningStatus,
 }: {
-  item: StopwatchType; selected: boolean; isDark: boolean; onSelect: (type: StopwatchType) => void;
+  item: StopwatchType; selected: boolean; isDark: boolean;
+  onSelect: (type: StopwatchType) => void;
+  warningStatus?: InteractionStatus;
 }) {
-  const textColor = isDark ? '#ECEDEE' : '#11181C';
-  const subColor  = isDark ? '#9BA1A6' : '#687076';
-  const rowBg     = selected ? (isDark ? '#1C2B2B' : '#E8F8F7') : (isDark ? '#1E2022' : '#F5F5F7');
-  const border    = selected ? item.color : (isDark ? '#2A2D2F' : '#E5E5EA');
+  const textColor    = isDark ? '#ECEDEE' : '#11181C';
+  const subColor     = isDark ? '#9BA1A6' : '#687076';
+  const rowBg        = selected ? (isDark ? '#1C2B2B' : '#E8F8F7') : (isDark ? '#1E2022' : '#F5F5F7');
+  const border       = selected ? item.color : (isDark ? '#2A2D2F' : '#E5E5EA');
+  const warningColor = warningStatus ? INTERACTION_COLOR[warningStatus] : undefined;
 
   return (
     <TouchableOpacity
@@ -66,6 +81,15 @@ function TypeRow({
           {formatDuration(totalDuration(item))} · peak {item.peakValue}
         </Text>
       </View>
+      {warningColor && (
+        <View style={[styles.warningBadge, { backgroundColor: warningColor + '22', borderColor: warningColor }]}>
+          <Text style={[styles.warningText, { color: warningColor }]}>
+            {warningStatus === 'Low Risk & Synergy' ? '↑' :
+             warningStatus === 'Low Risk & Decrease' ? '↓' :
+             warningStatus === 'Low Risk & No Synergy' ? '▲' : '⚠'}
+          </Text>
+        </View>
+      )}
       {selected && <Text style={[styles.checkmark, { color: item.color }]}>✓</Text>}
     </TouchableOpacity>
   );
@@ -75,18 +99,50 @@ function TypeRow({
 // Modal
 // ---------------------------------------------------------------------------
 
-export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now }: Props) {
+export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existingSubstanceIds = [] }: Props) {
   const { state } = useStopwatch();
+
+  const warningMap = useMemo(() => {
+    const map = new Map<string, InteractionStatus>();
+    if (!state.showInteractionBadges) return map;
+    if (existingSubstanceIds.length === 0) return map;
+    for (const type of state.types) {
+      if (!type.isSubstance) continue;
+      let worst: Interaction | undefined;
+      for (const existingId of existingSubstanceIds) {
+        if (existingId === type.id) continue;
+        const inter = getInteraction(type.id, existingId);
+        if (!inter) continue;
+        if (!worst || INTERACTION_SEVERITY[inter.status] < INTERACTION_SEVERITY[worst.status]) {
+          worst = inter;
+        }
+      }
+      if (worst) map.set(type.id, worst.status);
+    }
+    return map;
+  }, [existingSubstanceIds, state.types, state.showInteractionBadges]);
+  const clockRef = useRef<ClockPickerHandle>(null);
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [mode, setMode] = useState<EditMode>('start');
 
   const initDate = new Date(now);
-  const [hour,     setHour]     = useState(initDate.getHours());
-  const [minute,   setMinute]   = useState(initDate.getMinutes());
-  const [dayOffset, setDayOffset] = useState(0); // 0 = today, 1 = tomorrow, etc.
-  const [cdHour,   setCdHour]   = useState(initDate.getHours());
-  const [cdMinute, setCdMinute] = useState(initDate.getMinutes());
-  const [cdValue,  setCdValue]  = useState(50);
+  const [hour,      setHour]      = useState(initDate.getHours());
+  const [minute,    setMinute]    = useState(initDate.getMinutes());
+  const [dayOffset, setDayOffset] = useState(0);
+  const [cdHour,    setCdHour]    = useState(initDate.getHours());
+  const [cdMinute,  setCdMinute]  = useState(initDate.getMinutes());
+  const [cdValue,   setCdValue]   = useState(50);
+
+  // Re-seed to "now" each time the modal opens
+  useEffect(() => {
+    if (!visible) return;
+    const d = new Date(now);
+    setHour(d.getHours());
+    setMinute(d.getMinutes());
+    setCdHour(d.getHours());
+    setCdMinute(d.getMinutes());
+    setDayOffset(0);
+  }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const bgColor     = isDark ? '#111' : '#fff';
   const textColor   = isDark ? '#ECEDEE' : '#11181C';
@@ -127,7 +183,16 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now }: Prop
 
   function handleAdd() {
     if (!selectedTypeId) return;
-    onAdd(selectedTypeId, startMs);
+    const effH = clockRef.current?.getHour() ?? (mode === 'comedown' ? cdHour : hour);
+    const effM = clockRef.current?.getMinute() ?? (mode === 'comedown' ? cdMinute : minute);
+    const effTarget = absMs(effH, effM, dayOffset);
+    let effStartMs: number;
+    switch (mode) {
+      case 'start': effStartMs = effTarget; break;
+      case 'peak': effStartMs = selectedType ? solveStartForPeakAt(selectedType, effTarget) : effTarget; break;
+      case 'comedown': effStartMs = selectedType ? (solveStartForOffsetValue(selectedType, cdValue, effTarget) ?? effTarget) : effTarget; break;
+    }
+    onAdd(selectedTypeId, effStartMs);
     setSelectedTypeId(null);
     setMode('start');
     setDayOffset(0);
@@ -159,6 +224,7 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now }: Prop
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <View style={[styles.sheet, { backgroundColor: bgColor }]}>
         <View style={[styles.handle, { backgroundColor: handleColor }]} />
         <Text style={[styles.title, { color: textColor }]}>Add to Plan</Text>
@@ -185,6 +251,7 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now }: Prop
                 setSelectedTypeId(t.id);
                 setCdValue(t.peakValue * 0.25);
               }}
+              warningStatus={warningMap.get(item.id)}
             />
           )}
         />
@@ -206,50 +273,33 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now }: Prop
             ))}
           </View>
 
-          {/* Day offset selector (+1d / −1d) */}
-          <View style={styles.dayRow}>
-            <TouchableOpacity
-              style={[styles.dayBtn, { backgroundColor: isDark ? '#2A2D2F' : '#E5E5EA' }]}
-              onPress={() => setDayOffset(d => d - 1)}
-            >
-              <Text style={[styles.dayBtnText, { color: subColor }]}>−1d</Text>
-            </TouchableOpacity>
-            <Text style={[styles.dayLabel, { color: textColor }]}>
-              {dayOffset === 0 ? 'Today' : dayOffset === 1 ? 'Tomorrow' : `+${dayOffset}d`}
-            </Text>
-            <TouchableOpacity
-              style={[styles.dayBtn, { backgroundColor: isDark ? '#2A2D2F' : '#E5E5EA' }]}
-              onPress={() => setDayOffset(d => d + 1)}
-            >
-              <Text style={[styles.dayBtnText, { color: subColor }]}>+1d</Text>
-            </TouchableOpacity>
-          </View>
-
           <ScrollView
             style={styles.pickerScroll}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {mode === 'start' && (
-              <ClockPicker hour={hour} minute={minute} isDark={isDark} label="Starts at" onHour={setHour} onMinute={setMinute} />
-            )}
-
-            {mode === 'peak' && (
-              <>
-                <ClockPicker hour={hour} minute={minute} isDark={isDark} label="Peak begins at" onHour={setHour} onMinute={setMinute} />
-                {selectedType && (
-                  <Text style={[styles.modeNote, { color: subColor }]}>
-                    Onset + comeup = {Math.round((selectedType.onsetDuration + selectedType.comeupDuration) / 60_000)}m before peak
-                  </Text>
-                )}
-              </>
-            )}
-
+            {/* ValueStepper only shown in comedown mode */}
             {mode === 'comedown' && (
-              <>
-                <ValueStepper value={cdValue} max={selectedType?.peakValue ?? 100} isDark={isDark} onChange={setCdValue} />
-                <ClockPicker hour={cdHour} minute={cdMinute} isDark={isDark} label="At this clock time" onHour={setCdHour} onMinute={setCdMinute} />
-              </>
+              <ValueStepper value={cdValue} max={selectedType?.peakValue ?? 100} isDark={isDark} onChange={setCdValue} />
+            )}
+
+            {/* Single always-mounted ClockPicker — avoids 1680-node remount on mode switch */}
+            <ClockPicker
+              ref={clockRef}
+              hour={mode === 'comedown' ? cdHour : hour}
+              minute={mode === 'comedown' ? cdMinute : minute}
+              isDark={isDark}
+              label={mode === 'start' ? 'Starts at' : mode === 'peak' ? 'Peak begins at' : 'At this clock time'}
+              onHour={mode === 'comedown' ? setCdHour : setHour}
+              onMinute={mode === 'comedown' ? setCdMinute : setMinute}
+              dayOffset={dayOffset}
+              onDayOffset={setDayOffset}
+            />
+
+            {mode === 'peak' && selectedType && (
+              <Text style={[styles.modeNote, { color: subColor }]}>
+                Onset + comeup = {Math.round((selectedType.onsetDuration + selectedType.comeupDuration) / 60_000)}m before peak
+              </Text>
             )}
 
             {/* Timeline preview (only when a type is selected) */}
@@ -277,6 +327,7 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now }: Prop
           </TouchableOpacity>
         </View>
       </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -299,6 +350,8 @@ const styles = StyleSheet.create({
   rowName: { fontSize: 15, fontWeight: '600' },
   rowMeta: { fontSize: 12, marginTop: 1 },
   checkmark: { fontSize: 16, fontWeight: '700' },
+  warningBadge: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  warningText: { fontSize: 12, fontWeight: '700' },
   footer: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 14, paddingBottom: 36, gap: 10 },
   segmented: { flexDirection: 'row', borderRadius: 12, padding: 3 },
   segmentTab: { flex: 1, paddingVertical: 7, borderRadius: 9, alignItems: 'center' },
@@ -310,8 +363,4 @@ const styles = StyleSheet.create({
   offsetLabel: { fontSize: 12, textAlign: 'center', opacity: 0.8 },
   addBtn: { borderRadius: 14, paddingVertical: 14, alignItems: 'center' },
   addBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  dayRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12 },
-  dayBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
-  dayBtnText: { fontSize: 13, fontWeight: '600' },
-  dayLabel: { fontSize: 15, fontWeight: '600', minWidth: 80, textAlign: 'center' },
 });

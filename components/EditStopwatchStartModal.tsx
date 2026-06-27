@@ -1,6 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -9,6 +11,7 @@ import {
 } from 'react-native';
 import {
   ClockPicker,
+  ClockPickerHandle,
   TimelineSummary,
   clampH,
   clampM,
@@ -29,12 +32,19 @@ interface Props {
 export function EditStopwatchStartModal({
   visible, stopwatch, type, currentTime, isDark, onSave, onClose,
 }: Props) {
-  const [hour,   setHour]   = useState(0);
-  const [minute, setMinute] = useState(0);
+  const [hour,      setHour]      = useState(0);
+  const [minute,    setMinute]    = useState(0);
+  const [dayOffset, setDayOffset] = useState(0);
+  const clockRef = useRef<ClockPickerHandle>(null);
 
   useEffect(() => {
     if (!visible || !stopwatch) return;
-    const sd = new Date(stopwatch.startTime);
+    const sd  = new Date(stopwatch.startTime);
+    const now = new Date(currentTime);
+    // day offset relative to today
+    const todayMidnight = new Date(now); todayMidnight.setHours(0, 0, 0, 0);
+    const swMidnight    = new Date(sd);  swMidnight.setHours(0, 0, 0, 0);
+    setDayOffset(Math.round((swMidnight.getTime() - todayMidnight.getTime()) / 86_400_000));
     setHour(sd.getHours());
     setMinute(sd.getMinutes());
   }, [visible]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -49,7 +59,12 @@ export function EditStopwatchStartModal({
 
   // Clamp to "now" — a running stopwatch cannot have a future start time
   const newStartTime = Math.min(
-    (() => { const d = new Date(currentTime); d.setHours(hour, minute, 0, 0); return d.getTime(); })(),
+    (() => {
+      const d = new Date(currentTime);
+      d.setDate(d.getDate() + dayOffset);
+      d.setHours(hour, minute, 0, 0);
+      return d.getTime();
+    })(),
     currentTime,
   );
 
@@ -62,49 +77,63 @@ export function EditStopwatchStartModal({
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
-      <View style={[styles.sheet, { backgroundColor: bgColor }]}>
-        <View style={[styles.handle, { backgroundColor: handleBg }]} />
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <View style={[styles.sheet, { backgroundColor: bgColor }]}>
+          <View style={[styles.handle, { backgroundColor: handleBg }]} />
 
-        {/* Header */}
-        <View style={styles.entryHeader}>
-          <View style={[styles.dot, { backgroundColor: type.color }]} />
-          <Text style={[styles.entryName, { color: textColor }]}>Edit Start — {type.name}</Text>
-        </View>
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          <ClockPicker
-            hour={hour}
-            minute={minute}
-            isDark={isDark}
-            label="Started at"
-            onHour={h => setHour(clampH(h))}
-            onMinute={m => setMinute(clampM(m))}
-          />
-
-          <View style={[styles.timelineSection, { borderTopColor: dividerBg }]}>
-            <Text style={[styles.sectionLabel, { color: subColor }]}>Timeline</Text>
-            <TimelineSummary type={type} startMs={newStartTime} isDark={isDark} />
-            <Text style={[styles.offsetLabel, { color: subColor }]}>{startedLabel}</Text>
+          {/* Header */}
+          <View style={styles.entryHeader}>
+            <View style={[styles.dot, { backgroundColor: type.color }]} />
+            <Text style={[styles.entryName, { color: textColor }]}>Edit Start — {type.name}</Text>
           </View>
-        </ScrollView>
 
-        <View style={[styles.footer, { borderTopColor: dividerBg }]}>
-          <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-            <Text style={[styles.cancelText, { color: subColor }]}>Cancel</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: type.color }]}
-            onPress={() => { onSave(stopwatch.id, newStartTime); onClose(); }}
+          <ScrollView
+            style={styles.scroll}
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.saveBtnText}>Update</Text>
-          </TouchableOpacity>
+            <ClockPicker
+              ref={clockRef}
+              hour={hour}
+              minute={minute}
+              isDark={isDark}
+              label="Started at"
+              onHour={h => setHour(clampH(h))}
+              onMinute={m => setMinute(clampM(m))}
+              dayOffset={dayOffset}
+              onDayOffset={setDayOffset}
+            />
+
+            <View style={[styles.timelineSection, { borderTopColor: dividerBg }]}>
+              <Text style={[styles.sectionLabel, { color: subColor }]}>Timeline</Text>
+              <TimelineSummary type={type} startMs={newStartTime} isDark={isDark} />
+              <Text style={[styles.offsetLabel, { color: subColor }]}>{startedLabel}</Text>
+            </View>
+          </ScrollView>
+
+          <View style={[styles.footer, { borderTopColor: dividerBg }]}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+              <Text style={[styles.cancelText, { color: subColor }]}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.saveBtn, { backgroundColor: type.color }]}
+              onPress={() => {
+                const effH = clockRef.current?.getHour() ?? hour;
+                const effM = clockRef.current?.getMinute() ?? minute;
+                const d = new Date(currentTime);
+                d.setDate(d.getDate() + dayOffset);
+                d.setHours(effH, effM, 0, 0);
+                const effStartTime = Math.min(d.getTime(), currentTime);
+                onSave(stopwatch.id, effStartTime);
+                onClose();
+              }}
+            >
+              <Text style={styles.saveBtnText}>Update</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

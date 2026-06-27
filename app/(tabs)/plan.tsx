@@ -9,14 +9,18 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useStopwatch } from '@/store/StopwatchContext';
-import { Graph, GraphNavBar } from '@/components/Graph';
+import { Graph } from '@/components/Graph';
 import { AddPlanEntryModal } from '@/components/AddPlanEntryModal';
 import { EditPlanEntryModal } from '@/components/EditPlanEntryModal';
 import { InteractionWarningModal, type WarningPair } from '@/components/InteractionWarningModal';
-import { getActiveInteractions, INTERACTION_COLOR, INTERACTION_SEVERITY, type InteractionStatus } from '@/constants/interactions';
+import {
+  getActiveInteractions,
+  INTERACTION_COLOR,
+  INTERACTION_SEVERITY,
+  type InteractionStatus,
+} from '@/constants/interactions';
 import { formatDuration, totalDuration } from '@/engine/curveEngine';
 import type { GraphEntry, GraphRef, PlanMarker } from '@/components/Graph';
 import type { Plan, PlannedEntry, StopwatchType } from '@/types/models';
@@ -53,6 +57,7 @@ function PlanChipBar({
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
+      style={styles.chipScroll}
       contentContainerStyle={styles.chipBar}
     >
       {plans.map(plan => {
@@ -69,11 +74,7 @@ function PlanChipBar({
             onLongPress={() => {
               Alert.alert(plan.name, 'What would you like to do?', [
                 { text: 'Rename', onPress: () => onRename(plan.id) },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () => onDelete(plan.id),
-                },
+                { text: 'Delete', style: 'destructive', onPress: () => onDelete(plan.id) },
                 { text: 'Cancel', style: 'cancel' },
               ]);
             }}
@@ -87,7 +88,6 @@ function PlanChipBar({
             >
               {plan.name}
             </Text>
-            {/* Show rename pencil inline for the selected plan */}
             {selected && (
               <TouchableOpacity
                 hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
@@ -101,7 +101,6 @@ function PlanChipBar({
         );
       })}
 
-      {/* + New plan button */}
       <TouchableOpacity
         style={[styles.chip, { backgroundColor: chipBg }]}
         onPress={onAdd}
@@ -126,10 +125,10 @@ function formatEntryTime(targetTime: number, now: number): string {
   const entryDay = new Date(targetTime);
   entryDay.setHours(0, 0, 0, 0);
   const daysDiff = Math.round((entryDay.getTime() - todayStart.getTime()) / 86_400_000);
-  if (daysDiff === 0) return `Today ${timeStr}`;
-  if (daysDiff === 1) return `Tomorrow ${timeStr}`;
+  if (daysDiff === 0)  return `Today ${timeStr}`;
+  if (daysDiff === 1)  return `Tomorrow ${timeStr}`;
   if (daysDiff === -1) return `Yesterday ${timeStr}`;
-  if (daysDiff > 1) return `+${daysDiff}d ${timeStr}`;
+  if (daysDiff > 1)    return `+${daysDiff}d ${timeStr}`;
   return `${daysDiff}d ${timeStr}`;
 }
 
@@ -154,21 +153,18 @@ function EntryRow({
   return (
     <View style={[styles.entryRow, { backgroundColor: rowBg, borderColor: border }]}>
       <View style={[styles.entryDot, { backgroundColor: entry.typeColor }]} />
-
       <View style={styles.entryInfo}>
         <Text style={[styles.entryName, { color: textColor }]}>{entry.typeName}</Text>
         <Text style={[styles.entrySub, { color: subColor }]}>
           {formatDuration(entry.typeDuration)} · {formatEntryTime(entry.targetTime, now)}
         </Text>
       </View>
-
       <TouchableOpacity
         style={[styles.editEntryBtn, { borderColor: entry.typeColor }]}
         onPress={() => onEdit(entry)}
       >
         <Text style={[styles.editEntryText, { color: entry.typeColor }]}>Edit</Text>
       </TouchableOpacity>
-
       <TouchableOpacity
         style={styles.deleteEntryBtn}
         onPress={() => onDelete(entry.id)}
@@ -181,7 +177,7 @@ function EntryRow({
 }
 
 // ---------------------------------------------------------------------------
-// Persistent interaction warning row (for plan screen)
+// Persistent interaction warning row
 // ---------------------------------------------------------------------------
 
 function PlanWarningRow({ pair, isDark }: { pair: WarningPair; isDark: boolean }) {
@@ -276,10 +272,6 @@ function RenameDialog({
           onSubmitEditing={() => name.trim() && onSave(name.trim())}
         />
         <View style={styles.dialogBtns}>
-          <TouchableOpacity onPress={onDelete} style={styles.dialogBtn}>
-            <Text style={[styles.dialogBtnText, { color: '#FF3B30' }]}>Delete</Text>
-          </TouchableOpacity>
-          <View style={{ flex: 1 }} />
           <TouchableOpacity onPress={onCancel} style={styles.dialogBtn}>
             <Text style={[styles.dialogBtnText, { color: textColor }]}>Cancel</Text>
           </TouchableOpacity>
@@ -290,6 +282,10 @@ function RenameDialog({
             <Text style={[styles.dialogBtnText, { color: tint, fontWeight: '700' }]}>Save</Text>
           </TouchableOpacity>
         </View>
+        <View style={[styles.dialogDivider, { backgroundColor: border }]} />
+        <TouchableOpacity onPress={onDelete} style={styles.dialogDeleteBtn}>
+          <Text style={styles.dialogDeleteText}>Delete Plan</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -317,21 +313,20 @@ export default function PlanScreen() {
   const [addEntryVisible, setAddEntryVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PlannedEntry | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
+
+  const graphRef = useRef<GraphRef>(null);
   const [isGraphPanned, setIsGraphPanned] = useState(false);
   const [isGraphDay, setIsGraphDay] = useState(false);
-  const graphRef = useRef<GraphRef>(null);
+  const [visibleWindow, setVisibleWindow] = useState<{ start: number; end: number } | null>(null);
 
-  // Pending entry waiting for interaction warning confirmation
   const [pendingEntry, setPendingEntry] = useState<{ typeId: string; targetTime: number } | null>(null);
   const [pendingWarningPairs, setPendingWarningPairs] = useState<WarningPair[]>([]);
 
-  // Keep currentTime ticking
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, []);
 
-  // If selectedPlan no longer exists (deleted), fall back to first plan
   const selectedPlan =
     state.plans.find(p => p.id === selectedPlanId) ?? state.plans[0];
 
@@ -341,13 +336,13 @@ export default function PlanScreen() {
     }
   }, [state.plans, selectedPlanId]);
 
-  const bgColor = isDark ? '#000' : '#F2F2F7';
-  const textColor = isDark ? '#ECEDEE' : '#11181C';
-  const subColor  = isDark ? '#9BA1A6' : '#687076';
-  const tint      = isDark ? '#4ECDC4' : '#2BBDB4';
+  const bgColor    = isDark ? '#000' : '#F2F2F7';
+  const textColor  = isDark ? '#ECEDEE' : '#11181C';
+  const subColor   = isDark ? '#9BA1A6' : '#687076';
+  const tint       = isDark ? '#4ECDC4' : '#2BBDB4';
+  const cardBg     = isDark ? '#1E2022' : '#fff';
+  const cardBorder = isDark ? '#2A2D2F' : '#E5E5EA';
 
-  // Full curves for the plan graph preview — memoized so Graph's useMemo doesn't
-  // re-run its expensive SVG path computation on unrelated re-renders (e.g. opening the edit modal).
   const planOverrideEntries: GraphEntry[] = useMemo(() =>
     (selectedPlan?.entries ?? []).flatMap(e => {
       const tp = state.types.find(t => t.id === e.typeId);
@@ -358,7 +353,6 @@ export default function PlanScreen() {
     [selectedPlan?.entries, state.types],
   );
 
-  // Start-time marker labels alongside the curves
   const planMarkers: PlanMarker[] = useMemo(() =>
     (selectedPlan?.entries ?? []).flatMap(e => {
       const tp = state.types.find(t => t.id === e.typeId);
@@ -373,7 +367,6 @@ export default function PlanScreen() {
     [selectedPlan?.entries, selectedPlan?.name, state.types],
   );
 
-  // Rich entry list for rendering
   const richEntries = (selectedPlan?.entries ?? []).map(e => {
     const tp = state.types.find(t => t.id === e.typeId);
     return {
@@ -384,7 +377,6 @@ export default function PlanScreen() {
     };
   });
 
-  // Persistent interaction warnings: all pairs between substances in the current plan
   const planSubstanceIds = [
     ...new Set(
       (selectedPlan?.entries ?? [])
@@ -393,6 +385,7 @@ export default function PlanScreen() {
         .map(t => t.id),
     ),
   ];
+
   const planInteractionPairs: WarningPair[] = getActiveInteractions(planSubstanceIds)
     .sort((a, b) => INTERACTION_SEVERITY[a.interaction.status] - INTERACTION_SEVERITY[b.interaction.status])
     .map(p => ({
@@ -401,7 +394,6 @@ export default function PlanScreen() {
       interaction: p.interaction,
     }));
 
-  // The type for the entry currently being edited
   const editingType = editingEntry
     ? state.types.find(t => t.id === editingEntry.typeId) ?? null
     : null;
@@ -434,17 +426,11 @@ export default function PlanScreen() {
     removePlanEntry(selectedPlan.id, entryId);
   }
 
-  /**
-   * Called when user taps "Add Entry" in AddPlanEntryModal.
-   * If the type is a substance and there are interactions with existing plan substances,
-   * we pause and show the warning modal first.
-   */
   function handleAddEntry(typeId: string, targetTime: number) {
     if (!selectedPlan) return;
 
     const type = state.types.find(t => t.id === typeId);
     if (type?.isSubstance && state.showInteractionWarnings) {
-      // Existing substance IDs already in the plan (excluding any duplicate of the new one)
       const existingSubstanceIds = [
         ...new Set(
           selectedPlan.entries
@@ -457,7 +443,8 @@ export default function PlanScreen() {
 
       if (existingSubstanceIds.length > 0) {
         const rawPairs = getActiveInteractions([typeId, ...existingSubstanceIds])
-          .filter(p => p.idA === typeId || p.idB === typeId);
+          .filter(p => p.idA === typeId || p.idB === typeId)
+          .filter(p => !p.interaction.status.startsWith('Low Risk'));
 
         if (rawPairs.length > 0) {
           const pairs: WarningPair[] = rawPairs.map(p => ({
@@ -472,7 +459,6 @@ export default function PlanScreen() {
       }
     }
 
-    // No warnings — add directly
     addPlanEntry(selectedPlan.id, typeId, targetTime);
   }
 
@@ -481,53 +467,108 @@ export default function PlanScreen() {
     : null;
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]} edges={['top']}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <Text style={[styles.backText, { color: tint }]}>‹ Back</Text>
-        </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: textColor }]}>Plan Mode</Text>
-        <View style={styles.backBtn} />
-      </View>
+    <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
 
-      <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Plan chip selector */}
-        <PlanChipBar
-          plans={state.plans}
-          selectedId={selectedPlan?.id ?? ''}
-          onSelect={setSelectedPlanId}
-          onAdd={handleAddPlan}
-          onRename={id => setRenameId(id)}
-          onDelete={handleDeletePlan}
-          isDark={isDark}
+      {/* Plan chip selector */}
+      <PlanChipBar
+        plans={state.plans}
+        selectedId={selectedPlan?.id ?? ''}
+        onSelect={setSelectedPlanId}
+        onAdd={handleAddPlan}
+        onRename={id => setRenameId(id)}
+        onDelete={handleDeletePlan}
+        isDark={isDark}
+      />
+
+      {/* Graph card (fixed height) */}
+      <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <Graph
+          ref={graphRef}
+          currentTime={currentTime}
+          colorScheme={colorScheme}
+          overrideEntries={planOverrideEntries}
+          planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
+          height={180}
+          onIsPanned={setIsGraphPanned}
+          onIsDay={setIsGraphDay}
+          onViewChange={(s, e) => setVisibleWindow({ start: s, end: e })}
         />
 
-        {/* Graph preview — plan curves + start-time markers */}
-        <View style={styles.graphContainer}>
-          <Graph
-            ref={graphRef}
-            currentTime={currentTime}
-            colorScheme={colorScheme}
-            overrideEntries={planOverrideEntries}
-            planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
-            height={240}
-            onIsPanned={setIsGraphPanned}
-            onIsDay={setIsGraphDay}
-          />
-          <GraphNavBar graphRef={graphRef} isDark={isDark} tint={tint} isPanned={isGraphPanned} isDay={isGraphDay} />
+        {/* Off-screen indicators */}
+        {visibleWindow && (() => {
+          const offLeft = planOverrideEntries.filter(
+            e => e.startTime + totalDuration(e.type) < visibleWindow.start,
+          ).length;
+          const offRight = planOverrideEntries.filter(
+            e => e.startTime > visibleWindow.end,
+          ).length;
+          return (
+            <>
+              {offLeft > 0 && (
+                <View pointerEvents="none" style={[styles.offPillAnchor, { left: 8 }]}>
+                  <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                    <Text style={[styles.offPillText, { color: subColor }]}>‹ {offLeft}</Text>
+                  </View>
+                </View>
+              )}
+              {offRight > 0 && (
+                <View pointerEvents="none" style={[styles.offPillAnchor, { right: 8 }]}>
+                  <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                    <Text style={[styles.offPillText, { color: subColor }]}>{offRight} ›</Text>
+                  </View>
+                </View>
+              )}
+            </>
+          );
+        })()}
+
+        {/* Navigation buttons */}
+        <View style={[styles.navRow, { borderTopColor: cardBorder }]}>
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => graphRef.current?.panByFraction(-1)}
+          >
+            <Text style={[styles.navBtnText, { color: subColor }]}>{'<<'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => graphRef.current?.panByFraction(-0.5)}
+          >
+            <Text style={[styles.navBtnText, { color: subColor }]}>{'<'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.navBtn, styles.navBtnWide, isGraphPanned && !isGraphDay && { backgroundColor: tint + '22' }]}
+            onPress={() => graphRef.current?.resetView()}
+          >
+            <Text style={[styles.navBtnText, { color: isGraphPanned && !isGraphDay ? tint : subColor }]}>now</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.navBtn, styles.navBtnWide, isGraphDay && { backgroundColor: tint + '22' }]}
+            onPress={() => graphRef.current?.showDay()}
+          >
+            <Text style={[styles.navBtnText, { color: isGraphDay ? tint : subColor }]}>day</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => graphRef.current?.panByFraction(0.5)}
+          >
+            <Text style={[styles.navBtnText, { color: subColor }]}>{'>'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.navBtn}
+            onPress={() => graphRef.current?.panByFraction(1)}
+          >
+            <Text style={[styles.navBtnText, { color: subColor }]}>{'>>'}</Text>
+          </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Entry list */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionLabel, { color: subColor }]}>
-            {selectedPlan?.name ?? ''} entries
-          </Text>
-
+      {/* Entry card (flex: 1, internally scrollable) */}
+      <View style={[styles.entryCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <Text style={[styles.entryCardTitle, { color: subColor }]}>
+          {selectedPlan?.name ?? ''} entries
+        </Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.entryScrollContent}>
           {richEntries.length === 0 ? (
             <Text style={[styles.emptyText, { color: subColor }]}>
               No entries yet — tap + to add one.
@@ -544,20 +585,20 @@ export default function PlanScreen() {
               />
             ))
           )}
-        </View>
+        </ScrollView>
+      </View>
 
-        {/* Persistent interaction warnings for substances in this plan */}
-        {state.showInteractionWarnings && planInteractionPairs.length > 0 && (
-          <View style={styles.warningsSection}>
-            <Text style={[styles.sectionLabel, { color: subColor }]}>
-              Interactions
-            </Text>
+      {/* Interactions card — always visible when there are interactions */}
+      {state.showInteractionWarnings && planInteractionPairs.length > 0 && (
+        <View style={[styles.interactionsCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <Text style={[styles.entryCardTitle, { color: subColor }]}>Interactions</Text>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.interactionsScrollContent}>
             {planInteractionPairs.map((pair, i) => (
               <PlanWarningRow key={i} pair={pair} isDark={isDark} />
             ))}
-          </View>
-        )}
-      </ScrollView>
+          </ScrollView>
+        </View>
+      )}
 
       {/* FAB */}
       <TouchableOpacity
@@ -567,7 +608,6 @@ export default function PlanScreen() {
         <Text style={styles.fabText}>+</Text>
       </TouchableOpacity>
 
-      {/* Add entry modal */}
       <AddPlanEntryModal
         visible={addEntryVisible}
         isDark={isDark}
@@ -577,7 +617,6 @@ export default function PlanScreen() {
         existingSubstanceIds={planSubstanceIds}
       />
 
-      {/* Edit entry modal */}
       <EditPlanEntryModal
         visible={!!editingEntry}
         entry={editingEntry}
@@ -588,7 +627,6 @@ export default function PlanScreen() {
         onClose={() => setEditingEntry(null)}
       />
 
-      {/* Rename dialog */}
       <RenameDialog
         visible={!!renameId}
         currentName={renamingPlan?.name ?? ''}
@@ -605,7 +643,6 @@ export default function PlanScreen() {
         }}
       />
 
-      {/* Interaction warning popup for plan entry adds */}
       <InteractionWarningModal
         visible={pendingEntry !== null}
         isDark={isDark}
@@ -635,46 +672,102 @@ export default function PlanScreen() {
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: {
+  root: { flex: 1, gap: 8, paddingBottom: 0 },
+
+  graphCard: {
+    marginHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+
+  entryCard: {
+    flex: 1,
+    marginHorizontal: 12,
+    marginBottom: 0,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+    paddingTop: 12,
+  },
+  entryCardTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    paddingHorizontal: 16,
+    marginBottom: 10,
+  },
+
+  navRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    justifyContent: 'center',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 6,
+    gap: 4,
   },
-  backBtn: { width: 64 },
-  backText: { fontSize: 17, fontWeight: '600' },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 17, fontWeight: '700' },
-  scroll: { flex: 1 },
-  scrollContent: { paddingBottom: 100 },
+  navBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navBtnWide: {
+    paddingHorizontal: 18,
+  },
+  navBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    fontVariant: ['tabular-nums'],
+  },
+  entryScrollContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
+  },
 
-  // Chip bar
-  chipBar: {
-    paddingHorizontal: 16,
+  interactionsCard: {
+    maxHeight: 220,
+    marginHorizontal: 12,
+    marginBottom: 12,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+    paddingTop: 12,
+  },
+  interactionsScrollContent: {
+    paddingHorizontal: 12,
+    paddingBottom: 12,
     gap: 8,
-    paddingBottom: 4,
+  },
+
+  chipScroll: {
+    flexGrow: 0,
+    flexShrink: 0,
+  },
+  chipBar: {
+    paddingHorizontal: 12,
+    gap: 6,
+    paddingBottom: 0,
+    paddingTop: 4,
     flexDirection: 'row',
     alignItems: 'center',
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: 'transparent',
-    gap: 6,
+    gap: 4,
   },
-  chipText: { fontSize: 14, fontWeight: '500' },
+  chipText: { fontSize: 12, fontWeight: '500' },
   chipEditBtn: { marginLeft: 2 },
   chipEditIcon: { fontSize: 12 },
 
-  // Graph
-  graphContainer: { marginTop: 12, marginBottom: 4 },
-
-  // Section
-  section: { paddingHorizontal: 16, marginTop: 8 },
   sectionLabel: {
     fontSize: 11,
     fontWeight: '600',
@@ -684,7 +777,6 @@ const styles = StyleSheet.create({
   },
   emptyText: { fontSize: 14, textAlign: 'center', paddingVertical: 24 },
 
-  // Entry row
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -699,32 +791,12 @@ const styles = StyleSheet.create({
   entryInfo: { flex: 1 },
   entryName: { fontSize: 14, fontWeight: '600' },
   entrySub: { fontSize: 12, marginTop: 1 },
-  editEntryBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
+  editEntryBtn: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, borderWidth: 1 },
   editEntryText: { fontSize: 12, fontWeight: '600' },
-  deleteEntryBtn: {
-    paddingHorizontal: 6,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
+  deleteEntryBtn: { paddingHorizontal: 6, paddingVertical: 5, borderRadius: 8 },
   deleteEntryText: { fontSize: 13, color: '#FF6B6B', fontWeight: '700' },
 
-  // Persistent interaction warnings section
-  warningsSection: {
-    paddingHorizontal: 16,
-    marginTop: 16,
-    gap: 8,
-  },
-  warnRow: {
-    borderLeftWidth: 3,
-    borderRadius: 8,
-    padding: 10,
-    gap: 6,
-  },
+  warnRow: { borderLeftWidth: 3, borderRadius: 8, padding: 10, gap: 6 },
   warnHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -746,7 +818,6 @@ const styles = StyleSheet.create({
   warnNote: { borderRadius: 6, padding: 8, marginTop: 2 },
   warnNoteText: { fontSize: 12, lineHeight: 17 },
 
-  // FAB
   fab: {
     position: 'absolute',
     right: 20,
@@ -764,7 +835,6 @@ const styles = StyleSheet.create({
   },
   fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 32 },
 
-  // Rename dialog
   dialogOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -790,4 +860,25 @@ const styles = StyleSheet.create({
   dialogBtns: { flexDirection: 'row', justifyContent: 'flex-end', gap: 20 },
   dialogBtn: { paddingVertical: 4 },
   dialogBtnText: { fontSize: 16 },
+  dialogDivider: { height: StyleSheet.hairlineWidth, marginTop: 4 },
+  dialogDeleteBtn: { paddingVertical: 12, alignItems: 'center' },
+  dialogDeleteText: { fontSize: 15, fontWeight: '600', color: '#FF3B30' },
+
+  // Off-screen indicator pills
+  offPillAnchor: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  offPill: {
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  offPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
 });

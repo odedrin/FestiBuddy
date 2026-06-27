@@ -149,11 +149,11 @@ export function InteractionWarningModal({
 
         {/* Buttons */}
         <View style={[styles.btnRow, { borderTopColor: borderColor }]}>
-          <TouchableOpacity style={styles.btn} onPress={onCancel}>
+          <TouchableOpacity style={[styles.btn, { backgroundColor: bgColor }]} onPress={onCancel} activeOpacity={0.6}>
             <Text style={[styles.cancelText, { color: subColor }]}>Cancel</Text>
           </TouchableOpacity>
           <View style={[styles.btnDivider, { backgroundColor: borderColor }]} />
-          <TouchableOpacity style={styles.btn} onPress={onConfirm}>
+          <TouchableOpacity style={[styles.btn, { backgroundColor: bgColor }]} onPress={onConfirm} activeOpacity={0.6}>
             <Text style={[styles.confirmText, { color: confirmColor }]}>{confirmLabel}</Text>
           </TouchableOpacity>
         </View>

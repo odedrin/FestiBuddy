@@ -20,6 +20,7 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'stopwatch.fill': 'timer',
   'waveform.path.ecg': 'show-chart',
+  'calendar': 'calendar-today',
   'slider.horizontal.3': 'tune',
   'gearshape.fill': 'settings',
 } as IconMapping;

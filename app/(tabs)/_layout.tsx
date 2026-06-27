@@ -13,7 +13,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
+        tabBarActiveTintColor: isDark ? '#4ECDC4' : Colors[colorScheme].tint,
         headerShown: false,
         tabBarButton: HapticTab,
         tabBarStyle: {
@@ -24,19 +24,23 @@ export default function TabLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{
-          title: 'Stopwatches',
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="stopwatch.fill" color={color} />
-          ),
-        }}
+        options={{ href: null }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Graph',
+          title: 'Live Graph',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="waveform.path.ecg" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="plan"
+        options={{
+          title: 'Plan',
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={26} name="calendar" color={color} />
           ),
         }}
       />

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import {
   Linking,
   Modal,
@@ -16,6 +16,13 @@ function psychonautWikiUrl(name: string): string {
 import { useStopwatch } from '@/store/StopwatchContext';
 import { InteractionWarningModal } from '@/components/InteractionWarningModal';
 import { useInteractionGuard } from '@/hooks/use-interaction-guard';
+import {
+  getInteraction,
+  INTERACTION_COLOR,
+  INTERACTION_SEVERITY,
+  type Interaction,
+  type InteractionStatus,
+} from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 import { formatDuration, totalDuration } from '@/engine/curveEngine';
 
@@ -29,15 +36,18 @@ function TypeRow({
   item,
   isDark,
   onStart,
+  warningStatus,
 }: {
   item: StopwatchType;
   isDark: boolean;
   onStart: (type: StopwatchType) => void;
+  warningStatus?: InteractionStatus;
 }) {
-  const textColor = isDark ? '#ECEDEE' : '#11181C';
-  const subColor  = isDark ? '#9BA1A6' : '#687076';
-  const rowBg     = isDark ? '#1E2022' : '#F5F5F7';
-  const border    = isDark ? '#2A2D2F' : '#E5E5EA';
+  const textColor    = isDark ? '#ECEDEE' : '#11181C';
+  const subColor     = isDark ? '#9BA1A6' : '#687076';
+  const rowBg        = isDark ? '#1E2022' : '#F5F5F7';
+  const border       = isDark ? '#2A2D2F' : '#E5E5EA';
+  const warningColor = warningStatus ? INTERACTION_COLOR[warningStatus] : undefined;
 
   return (
     <View style={[styles.row, { backgroundColor: rowBg, borderColor: border }]}>
@@ -48,6 +58,15 @@ function TypeRow({
           {formatDuration(totalDuration(item))}
         </Text>
       </View>
+      {warningColor && (
+        <View style={[styles.warningBadge, { backgroundColor: warningColor + '22', borderColor: warningColor }]}>
+          <Text style={[styles.warningText, { color: warningColor }]}>
+            {warningStatus === 'Low Risk & Synergy' ? '↑' :
+             warningStatus === 'Low Risk & Decrease' ? '↓' :
+             warningStatus === 'Low Risk & No Synergy' ? '▲' : '⚠'}
+          </Text>
+        </View>
+      )}
       <TouchableOpacity
         style={[styles.startBtn, { backgroundColor: item.color }]}
         onPress={() => onStart(item)}
@@ -71,6 +90,24 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
   const { state } = useStopwatch();
   const { handleStart, pendingType, warningPairs, onConfirm, onCancel } =
     useInteractionGuard();
+
+  // Precompute worst interaction for each type vs currently active stopwatches
+  const warningMap = useMemo(() => {
+    const activeTypeIds = state.activeStopwatches.map(sw => sw.typeId);
+    const map = new Map<string, InteractionStatus>();
+    for (const type of state.types) {
+      let worst: Interaction | undefined;
+      for (const activeId of activeTypeIds) {
+        const inter = getInteraction(type.id, activeId);
+        if (!inter) continue;
+        if (!worst || INTERACTION_SEVERITY[inter.status] < INTERACTION_SEVERITY[worst.status]) {
+          worst = inter;
+        }
+      }
+      if (worst) map.set(type.id, worst.status);
+    }
+    return map;
+  }, [state.activeStopwatches, state.types]);
 
   // Clear pending warning whenever the sheet is closed externally
   useEffect(() => {
@@ -140,7 +177,12 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
             ) : null
           }
           renderItem={({ item }) => (
-            <TypeRow item={item} isDark={isDark} onStart={handleTypeStart} />
+            <TypeRow
+              item={item}
+              isDark={isDark}
+              onStart={handleTypeStart}
+              warningStatus={state.showInteractionBadges ? warningMap.get(item.id) : undefined}
+            />
           )}
         />
       </View>
@@ -223,6 +265,18 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 12,
     marginTop: 1,
+  },
+  warningBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  warningText: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   startBtn: {
     paddingHorizontal: 14,

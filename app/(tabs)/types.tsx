@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -7,6 +7,12 @@ import { TypeCard } from '@/components/TypeCard';
 import { TypeEditorModal } from '@/components/TypeEditorModal';
 import { InteractionWarningModal } from '@/components/InteractionWarningModal';
 import { useInteractionGuard } from '@/hooks/use-interaction-guard';
+import {
+  getInteraction,
+  INTERACTION_SEVERITY,
+  type Interaction,
+  type InteractionStatus,
+} from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 
 export default function TypesScreen() {
@@ -56,6 +62,26 @@ export default function TypesScreen() {
     );
   }
 
+  // Worst interaction per type vs currently active stopwatches
+  const warningMap = useMemo(() => {
+    const map = new Map<string, InteractionStatus>();
+    if (!state.showInteractionBadges) return map;
+    const activeTypeIds = state.activeStopwatches.map(sw => sw.typeId);
+    for (const type of state.types) {
+      let worst: Interaction | undefined;
+      for (const activeId of activeTypeIds) {
+        if (activeId === type.id) continue;
+        const inter = getInteraction(type.id, activeId);
+        if (!inter) continue;
+        if (!worst || INTERACTION_SEVERITY[inter.status] < INTERACTION_SEVERITY[worst.status]) {
+          worst = inter;
+        }
+      }
+      if (worst) map.set(type.id, worst.status);
+    }
+    return map;
+  }, [state.activeStopwatches, state.types, state.showInteractionBadges]);
+
   // Visible types, split by section (excludes hidden)
   const customTypes    = state.types.filter(t => !t.isBuiltIn && !t.isSubstance && !t.hidden);
   const builtInTypes   = state.types.filter(t =>  t.isBuiltIn && !t.isSubstance && !t.hidden);
@@ -75,6 +101,7 @@ export default function TypesScreen() {
         onDelete={handleDelete}
         onToggleFavorite={toggleFavorite}
         onHide={hideType}
+        warningStatus={warningMap.get(item.id)}
       />
     );
   }
@@ -139,6 +166,7 @@ export default function TypesScreen() {
                 onToggleFavorite={toggleFavorite}
                 onHide={() => unhideType(item.id)}
                 hideLabel="Unhide"
+                warningStatus={warningMap.get(item.id)}
               />
             ))}
           </View>
