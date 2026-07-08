@@ -1,20 +1,9 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Alert,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useStopwatch } from '@/store/StopwatchContext';
-import { Graph } from '@/components/Graph';
-import { AddPlanEntryModal } from '@/components/AddPlanEntryModal';
+import { CreatePlanModal } from '@/components/CreatePlanModal';
 import { EditPlanEntryModal } from '@/components/EditPlanEntryModal';
-import { InteractionWarningModal, type WarningPair } from '@/components/InteractionWarningModal';
+import { EditPlanModal } from '@/components/EditPlanModal';
+import type { GraphEntry, GraphRef, PlanMarker } from '@/components/Graph';
+import { Graph } from '@/components/Graph';
+import { type WarningPair } from '@/components/InteractionWarningModal';
 import {
   getActiveInteractions,
   INTERACTION_COLOR,
@@ -22,8 +11,31 @@ import {
   type InteractionStatus,
 } from '@/constants/interactions';
 import { formatDuration, totalDuration } from '@/engine/curveEngine';
-import type { GraphEntry, GraphRef, PlanMarker } from '@/components/Graph';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useStopwatch } from '@/store/StopwatchContext';
 import type { Plan, PlannedEntry, StopwatchType } from '@/types/models';
+import { formatEntryTime } from '@/utils/formatEntryTime';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  LayoutAnimation,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const TICK_MS = 2_000;
 
@@ -88,15 +100,6 @@ function PlanChipBar({
             >
               {plan.name}
             </Text>
-            {selected && (
-              <TouchableOpacity
-                hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
-                onPress={() => onRename(plan.id)}
-                style={styles.chipEditBtn}
-              >
-                <Text style={[styles.chipEditIcon, { color: tint }]}>✏</Text>
-              </TouchableOpacity>
-            )}
           </TouchableOpacity>
         );
       })}
@@ -114,23 +117,6 @@ function PlanChipBar({
 // ---------------------------------------------------------------------------
 // Entry row
 // ---------------------------------------------------------------------------
-
-function formatEntryTime(targetTime: number, now: number): string {
-  const d = new Date(targetTime);
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  const timeStr = `${hh}:${mm}`;
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  const entryDay = new Date(targetTime);
-  entryDay.setHours(0, 0, 0, 0);
-  const daysDiff = Math.round((entryDay.getTime() - todayStart.getTime()) / 86_400_000);
-  if (daysDiff === 0)  return `Today ${timeStr}`;
-  if (daysDiff === 1)  return `Tomorrow ${timeStr}`;
-  if (daysDiff === -1) return `Yesterday ${timeStr}`;
-  if (daysDiff > 1)    return `+${daysDiff}d ${timeStr}`;
-  return `${daysDiff}d ${timeStr}`;
-}
 
 function EntryRow({
   entry,
@@ -300,27 +286,39 @@ export default function PlanScreen() {
   const isDark = colorScheme === 'dark';
   const {
     state,
-    addPlan,
+    createPlanWithEntries,
     renamePlan,
     deletePlan,
-    addPlanEntry,
     removePlanEntry,
     updatePlanEntry,
+    savePlanEdits,
   } = useStopwatch();
 
   const [currentTime, setCurrentTime] = useState(Date.now);
   const [selectedPlanId, setSelectedPlanId] = useState(state.plans[0]?.id ?? '');
-  const [addEntryVisible, setAddEntryVisible] = useState(false);
   const [editingEntry, setEditingEntry] = useState<PlannedEntry | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
+  const [createPlanVisible, setCreatePlanVisible] = useState(false);
+  const [editPlanVisible, setEditPlanVisible] = useState(false);
 
   const graphRef = useRef<GraphRef>(null);
   const [isGraphPanned, setIsGraphPanned] = useState(false);
   const [isGraphDay, setIsGraphDay] = useState(false);
   const [visibleWindow, setVisibleWindow] = useState<{ start: number; end: number } | null>(null);
 
-  const [pendingEntry, setPendingEntry] = useState<{ typeId: string; targetTime: number } | null>(null);
-  const [pendingWarningPairs, setPendingWarningPairs] = useState<WarningPair[]>([]);
+  // Collapsible sections — collapsing never shrinks the graph; the screen
+  // itself scrolls to reveal full content instead (same pattern as the
+  // Live screen's "Running now" legend).
+  const [entriesCollapsed, setEntriesCollapsed] = useState(false);
+  const [interactionsCollapsed, setInteractionsCollapsed] = useState(false);
+  const toggleEntries = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setEntriesCollapsed(prev => !prev);
+  }, []);
+  const toggleInteractions = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setInteractionsCollapsed(prev => !prev);
+  }, []);
 
   useEffect(() => {
     const id = setInterval(() => setCurrentTime(Date.now()), TICK_MS);
@@ -398,8 +396,10 @@ export default function PlanScreen() {
     ? state.types.find(t => t.id === editingEntry.typeId) ?? null
     : null;
 
-  function handleAddPlan() {
-    addPlan(`Plan ${state.plans.length + 1}`);
+  function handleCreatePlan(name: string, entries: { typeId: string; targetTime: number }[]) {
+    const id = createPlanWithEntries(name, entries);
+    setSelectedPlanId(id);
+    setCreatePlanVisible(false);
   }
 
   function handleDeletePlan(id: string) {
@@ -426,40 +426,10 @@ export default function PlanScreen() {
     removePlanEntry(selectedPlan.id, entryId);
   }
 
-  function handleAddEntry(typeId: string, targetTime: number) {
+  function handleSavePlanEdits(name: string, entries: PlannedEntry[]) {
     if (!selectedPlan) return;
-
-    const type = state.types.find(t => t.id === typeId);
-    if (type?.isSubstance && state.showInteractionWarnings) {
-      const existingSubstanceIds = [
-        ...new Set(
-          selectedPlan.entries
-            .map(e => state.types.find(t => t.id === e.typeId))
-            .filter((t): t is StopwatchType => !!t?.isSubstance)
-            .map(t => t.id)
-            .filter(id => id !== typeId),
-        ),
-      ];
-
-      if (existingSubstanceIds.length > 0) {
-        const rawPairs = getActiveInteractions([typeId, ...existingSubstanceIds])
-          .filter(p => p.idA === typeId || p.idB === typeId)
-          .filter(p => !p.interaction.status.startsWith('Low Risk'));
-
-        if (rawPairs.length > 0) {
-          const pairs: WarningPair[] = rawPairs.map(p => ({
-            nameA: state.types.find(t => t.id === p.idA)?.name ?? p.idA,
-            nameB: state.types.find(t => t.id === p.idB)?.name ?? p.idB,
-            interaction: p.interaction,
-          }));
-          setPendingEntry({ typeId, targetTime });
-          setPendingWarningPairs(pairs);
-          return;
-        }
-      }
-    }
-
-    addPlanEntry(selectedPlan.id, typeId, targetTime);
+    savePlanEdits(selectedPlan.id, name, entries);
+    setEditPlanVisible(false);
   }
 
   const renamingPlan = renameId
@@ -469,153 +439,191 @@ export default function PlanScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
 
+      {/* Screen headline */}
+      <View style={styles.headline}>
+        <Text style={[styles.headlineTitle, { color: textColor }]}>Plan</Text>
+        <Text style={[styles.headlineSubtitle, { color: subColor }]}>
+          Plan your trip here. 
+          You can see your plans in the live screen
+        </Text>
+      </View>
+
       {/* Plan chip selector */}
       <PlanChipBar
         plans={state.plans}
         selectedId={selectedPlan?.id ?? ''}
         onSelect={setSelectedPlanId}
-        onAdd={handleAddPlan}
+        onAdd={() => setCreatePlanVisible(true)}
         onRename={id => setRenameId(id)}
         onDelete={handleDeletePlan}
         isDark={isDark}
       />
 
-      {/* Graph card (fixed height) */}
-      <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <Graph
-          ref={graphRef}
-          currentTime={currentTime}
-          colorScheme={colorScheme}
-          overrideEntries={planOverrideEntries}
-          planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
-          height={180}
-          onIsPanned={setIsGraphPanned}
-          onIsDay={setIsGraphDay}
-          onViewChange={(s, e) => setVisibleWindow({ start: s, end: e })}
-        />
-
-        {/* Off-screen indicators */}
-        {visibleWindow && (() => {
-          const offLeft = planOverrideEntries.filter(
-            e => e.startTime + totalDuration(e.type) < visibleWindow.start,
-          ).length;
-          const offRight = planOverrideEntries.filter(
-            e => e.startTime > visibleWindow.end,
-          ).length;
-          return (
-            <>
-              {offLeft > 0 && (
-                <View pointerEvents="none" style={[styles.offPillAnchor, { left: 8 }]}>
-                  <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-                    <Text style={[styles.offPillText, { color: subColor }]}>‹ {offLeft}</Text>
-                  </View>
-                </View>
-              )}
-              {offRight > 0 && (
-                <View pointerEvents="none" style={[styles.offPillAnchor, { right: 8 }]}>
-                  <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-                    <Text style={[styles.offPillText, { color: subColor }]}>{offRight} ›</Text>
-                  </View>
-                </View>
-              )}
-            </>
-          );
-        })()}
-
-        {/* Navigation buttons */}
-        <View style={[styles.navRow, { borderTopColor: cardBorder }]}>
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => graphRef.current?.panByFraction(-1)}
-          >
-            <Text style={[styles.navBtnText, { color: subColor }]}>{'<<'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => graphRef.current?.panByFraction(-0.5)}
-          >
-            <Text style={[styles.navBtnText, { color: subColor }]}>{'<'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.navBtn, styles.navBtnWide, isGraphPanned && !isGraphDay && { backgroundColor: tint + '22' }]}
-            onPress={() => graphRef.current?.resetView()}
-          >
-            <Text style={[styles.navBtnText, { color: isGraphPanned && !isGraphDay ? tint : subColor }]}>now</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.navBtn, styles.navBtnWide, isGraphDay && { backgroundColor: tint + '22' }]}
-            onPress={() => graphRef.current?.showDay()}
-          >
-            <Text style={[styles.navBtnText, { color: isGraphDay ? tint : subColor }]}>day</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => graphRef.current?.panByFraction(0.5)}
-          >
-            <Text style={[styles.navBtnText, { color: subColor }]}>{'>'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.navBtn}
-            onPress={() => graphRef.current?.panByFraction(1)}
-          >
-            <Text style={[styles.navBtnText, { color: subColor }]}>{'>>'}</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {/* Entry card (flex: 1, internally scrollable) */}
-      <View style={[styles.entryCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        <Text style={[styles.entryCardTitle, { color: subColor }]}>
-          {selectedPlan?.name ?? ''} entries
-        </Text>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.entryScrollContent}>
-          {richEntries.length === 0 ? (
-            <Text style={[styles.emptyText, { color: subColor }]}>
-              No entries yet — tap + to add one.
-            </Text>
-          ) : (
-            richEntries.map(e => (
-              <EntryRow
-                key={e.id}
-                entry={e}
-                now={currentTime}
-                isDark={isDark}
-                onEdit={entry => setEditingEntry(entry)}
-                onDelete={handleDeleteEntry}
-              />
-            ))
-          )}
-        </ScrollView>
-      </View>
-
-      {/* Interactions card — always visible when there are interactions */}
-      {state.showInteractionWarnings && planInteractionPairs.length > 0 && (
-        <View style={[styles.interactionsCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Text style={[styles.entryCardTitle, { color: subColor }]}>Interactions</Text>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.interactionsScrollContent}>
-            {planInteractionPairs.map((pair, i) => (
-              <PlanWarningRow key={i} pair={pair} isDark={isDark} />
-            ))}
-          </ScrollView>
-        </View>
-      )}
-
-      {/* FAB */}
-      <TouchableOpacity
-        style={[styles.fab, { backgroundColor: tint }]}
-        onPress={() => setAddEntryVisible(true)}
+      {/* Everything below the chip bar scrolls, same as the Live Graph screen —
+          collapsing a section never shrinks the graph; the page scrolls instead. */}
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.fabText}>+</Text>
-      </TouchableOpacity>
 
-      <AddPlanEntryModal
-        visible={addEntryVisible}
-        isDark={isDark}
-        now={currentTime}
-        onClose={() => setAddEntryVisible(false)}
-        onAdd={handleAddEntry}
-        existingSubstanceIds={planSubstanceIds}
-      />
+        {/* Graph card (fixed height, like the Live Graph screen) */}
+        <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <View style={styles.graphArea}>
+            <Graph
+              ref={graphRef}
+              currentTime={currentTime}
+              colorScheme={colorScheme}
+              overrideEntries={planOverrideEntries}
+              planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
+              height={280}
+              onIsPanned={setIsGraphPanned}
+              onIsDay={setIsGraphDay}
+              onViewChange={(s, e) => setVisibleWindow({ start: s, end: e })}
+            />
+
+            {/* Off-screen indicators */}
+            {visibleWindow && (() => {
+              const offLeft = planOverrideEntries.filter(
+                e => e.startTime + totalDuration(e.type) < visibleWindow.start,
+              ).length;
+              const offRight = planOverrideEntries.filter(
+                e => e.startTime > visibleWindow.end,
+              ).length;
+              return (
+                <>
+                  {offLeft > 0 && (
+                    <View pointerEvents="none" style={[styles.offPillAnchor, { left: 8 }]}>
+                      <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                        <Text style={[styles.offPillText, { color: subColor }]}>‹ {offLeft}</Text>
+                      </View>
+                    </View>
+                  )}
+                  {offRight > 0 && (
+                    <View pointerEvents="none" style={[styles.offPillAnchor, { right: 8 }]}>
+                      <View style={[styles.offPill, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+                        <Text style={[styles.offPillText, { color: subColor }]}>{offRight} ›</Text>
+                      </View>
+                    </View>
+                  )}
+                </>
+              );
+            })()}
+          </View>
+
+          {/* Navigation buttons */}
+          <View style={[styles.navRow, { borderTopColor: cardBorder }]}>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => graphRef.current?.panByFraction(-1)}
+            >
+              <Text style={[styles.navBtnText, { color: subColor }]}>{'<<'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => graphRef.current?.panByFraction(-0.5)}
+            >
+              <Text style={[styles.navBtnText, { color: subColor }]}>{'<'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.navBtn, styles.navBtnWide, isGraphPanned && !isGraphDay && { backgroundColor: tint + '22' }]}
+              onPress={() => graphRef.current?.resetView()}
+            >
+              <Text style={[styles.navBtnText, { color: isGraphPanned && !isGraphDay ? tint : subColor }]}>now</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.navBtn, styles.navBtnWide, isGraphDay && { backgroundColor: tint + '22' }]}
+              onPress={() => graphRef.current?.showDay()}
+            >
+              <Text style={[styles.navBtnText, { color: isGraphDay ? tint : subColor }]}>day</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => graphRef.current?.panByFraction(0.5)}
+            >
+              <Text style={[styles.navBtnText, { color: subColor }]}>{'>'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => graphRef.current?.panByFraction(1)}
+            >
+              <Text style={[styles.navBtnText, { color: subColor }]}>{'>>'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Entry card — collapsible; body is a plain View so the outer page
+            ScrollView handles overflow instead of a small internal one. */}
+        <View style={[styles.entryCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          <TouchableOpacity
+            style={[styles.entryCardHeader, entriesCollapsed && styles.cardHeaderCollapsed, { borderBottomColor: cardBorder }]}
+            onPress={toggleEntries}
+            activeOpacity={0.7}
+          >
+            <View style={styles.cardHeaderTitleGroup}>
+              <Text style={[styles.cardChevron, { color: subColor }]}>{entriesCollapsed ? '▸' : '▾'}</Text>
+              <Text style={[styles.entryCardTitle, styles.entryCardTitleInRow, { color: subColor }]} numberOfLines={1}>
+                {selectedPlan?.name ?? ''} entries{richEntries.length > 0 ? ` · ${richEntries.length}` : ''}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.editPlanBtn, { borderColor: tint }]}
+              onPress={() => setEditPlanVisible(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.editPlanBtnText, { color: tint }]}>✏ Edit</Text>
+            </TouchableOpacity>
+          </TouchableOpacity>
+
+          {!entriesCollapsed && (
+            <View style={styles.entryListBody}>
+              {richEntries.length === 0 ? (
+                <Text style={[styles.emptyText, { color: subColor }]}>
+                  No entries yet — tap Edit to add one.
+                </Text>
+              ) : (
+                richEntries.map(e => (
+                  <EntryRow
+                    key={e.id}
+                    entry={e}
+                    now={currentTime}
+                    isDark={isDark}
+                    onEdit={entry => setEditingEntry(entry)}
+                    onDelete={handleDeleteEntry}
+                  />
+                ))
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* Interactions card — collapsible; only shown when there are interactions */}
+        {state.showInteractionWarnings && planInteractionPairs.length > 0 && (
+          <View style={[styles.interactionsCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <TouchableOpacity
+              style={[styles.entryCardHeader, interactionsCollapsed && styles.cardHeaderCollapsed, { borderBottomColor: cardBorder }]}
+              onPress={toggleInteractions}
+              activeOpacity={0.7}
+            >
+              <View style={styles.cardHeaderTitleGroup}>
+                <Text style={[styles.cardChevron, { color: subColor }]}>{interactionsCollapsed ? '▸' : '▾'}</Text>
+                <Text style={[styles.entryCardTitle, styles.entryCardTitleInRow, { color: subColor }]}>
+                  Interactions · {planInteractionPairs.length}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            {!interactionsCollapsed && (
+              <View style={styles.interactionsListBody}>
+                {planInteractionPairs.map((pair, i) => (
+                  <PlanWarningRow key={i} pair={pair} isDark={isDark} />
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
+      </ScrollView>
 
       <EditPlanEntryModal
         visible={!!editingEntry}
@@ -625,6 +633,27 @@ export default function PlanScreen() {
         isDark={isDark}
         onSave={handleSaveEntry}
         onClose={() => setEditingEntry(null)}
+      />
+
+      <CreatePlanModal
+        visible={createPlanVisible}
+        isDark={isDark}
+        defaultName={`Plan ${state.plans.length + 1}`}
+        now={currentTime}
+        onCancel={() => setCreatePlanVisible(false)}
+        onDone={handleCreatePlan}
+      />
+
+      <EditPlanModal
+        visible={editPlanVisible}
+        isDark={isDark}
+        plan={selectedPlan ?? null}
+        now={currentTime}
+        onCancel={() => setEditPlanVisible(false)}
+        onSave={handleSavePlanEdits}
+        onDeletePlan={() => {
+          if (selectedPlan) handleDeletePlan(selectedPlan.id);
+        }}
       />
 
       <RenameDialog
@@ -642,27 +671,6 @@ export default function PlanScreen() {
           if (id) handleDeletePlan(id);
         }}
       />
-
-      <InteractionWarningModal
-        visible={pendingEntry !== null}
-        isDark={isDark}
-        newSubstanceName={
-          pendingEntry ? (state.types.find(t => t.id === pendingEntry.typeId)?.name ?? '') : ''
-        }
-        pairs={pendingWarningPairs}
-        confirmLabel="Add anyway"
-        onConfirm={() => {
-          if (pendingEntry && selectedPlan) {
-            addPlanEntry(selectedPlan.id, pendingEntry.typeId, pendingEntry.targetTime);
-          }
-          setPendingEntry(null);
-          setPendingWarningPairs([]);
-        }}
-        onCancel={() => {
-          setPendingEntry(null);
-          setPendingWarningPairs([]);
-        }}
-      />
     </SafeAreaView>
   );
 }
@@ -674,21 +682,39 @@ export default function PlanScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, gap: 8, paddingBottom: 0 },
 
+  scroll: { flex: 1 },
+  scrollContent: {
+    padding: 12,
+    gap: 8,
+    paddingBottom: 24,
+  },
+
+  headline: {
+    paddingHorizontal: 12,
+    paddingTop: 4,
+    gap: 2,
+  },
+  headlineTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  headlineSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
+  },
+
   graphCard: {
-    marginHorizontal: 12,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
+  graphArea: {},
 
   entryCard: {
-    flex: 1,
-    marginHorizontal: 12,
-    marginBottom: 0,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    paddingTop: 12,
   },
   entryCardTitle: {
     fontSize: 11,
@@ -697,6 +723,47 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     paddingHorizontal: 16,
     marginBottom: 10,
+  },
+  entryCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  cardHeaderCollapsed: {
+    borderBottomWidth: 0,
+  },
+  cardHeaderTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 1,
+  },
+  cardChevron: {
+    fontSize: 12,
+  },
+  entryCardTitleInRow: {
+    paddingHorizontal: 0,
+    marginBottom: 0,
+    flexShrink: 1,
+  },
+  editPlanBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+    borderWidth: 1.5,
+    flexShrink: 0,
+  },
+  editPlanBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  entryListBody: {
+    paddingHorizontal: 12,
+    paddingTop: 10,
+    paddingBottom: 12,
   },
 
   navRow: {
@@ -722,22 +789,15 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
-  entryScrollContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 12,
-  },
 
   interactionsCard: {
-    maxHeight: 220,
-    marginHorizontal: 12,
-    marginBottom: 12,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
-    paddingTop: 12,
   },
-  interactionsScrollContent: {
+  interactionsListBody: {
     paddingHorizontal: 12,
+    paddingTop: 10,
     paddingBottom: 12,
     gap: 8,
   },
@@ -765,8 +825,6 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   chipText: { fontSize: 12, fontWeight: '500' },
-  chipEditBtn: { marginLeft: 2 },
-  chipEditIcon: { fontSize: 12 },
 
   sectionLabel: {
     fontSize: 11,
@@ -817,23 +875,6 @@ const styles = StyleSheet.create({
   warnChevron: { fontSize: 10, marginTop: 2 },
   warnNote: { borderRadius: 6, padding: 8, marginTop: 2 },
   warnNoteText: { fontSize: 12, lineHeight: 17 },
-
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 32,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  fabText: { color: '#fff', fontSize: 28, fontWeight: '300', lineHeight: 32 },
 
   dialogOverlay: {
     ...StyleSheet.absoluteFillObject,

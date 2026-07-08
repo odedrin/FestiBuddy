@@ -1,13 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
+  LayoutAnimation,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
+  UIManager,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '@/constants/theme';
 import { effectiveElapsed, useStopwatch } from '@/store/StopwatchContext';
@@ -22,11 +26,19 @@ import { EditStopwatchStartModal } from '@/components/EditStopwatchStartModal';
 import { AddStopwatchModal } from '@/components/AddStopwatchModal';
 import type { GraphRef, PlanCurve, PlanMarker } from '@/components/Graph';
 
+if (
+  Platform.OS === 'android' &&
+  UIManager.setLayoutAnimationEnabledExperimental
+) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 const TICK_MS = 1000;
 
 export default function LiveGraphScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
+  const router = useRouter();
   const { state, stopStopwatch, updateStopwatchStartTime } = useStopwatch();
 
   const [now, setNow] = useState(Date.now);
@@ -48,6 +60,14 @@ export default function LiveGraphScreen() {
   // Visible time window (for off-screen indicators)
   const [visibleWindow, setVisibleWindow] = useState<{ start: number; end: number } | null>(null);
 
+  // "Running now" card collapse state — collapsing it never shrinks the graph;
+  // the screen itself scrolls to reveal the full stopwatch list instead.
+  const [legendCollapsed, setLegendCollapsed] = useState(false);
+  const toggleLegend = useCallback(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setLegendCollapsed(prev => !prev);
+  }, []);
+
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), TICK_MS);
     return () => clearInterval(id);
@@ -60,6 +80,14 @@ export default function LiveGraphScreen() {
       setSelectedIds(new Set());
     }
   }, [state.activeStopwatches.length]);
+
+  // Distinct running substances — drives the quick-access Interactions button.
+  const activeSubstanceCount = useMemo(() => new Set(
+    state.activeStopwatches
+      .map(sw => state.types.find(t => t.id === sw.typeId))
+      .filter(t => t?.isSubstance)
+      .map(t => t!.id),
+  ).size, [state.activeStopwatches, state.types]);
 
   const earliestStart = state.activeStopwatches.length > 0
     ? Math.min(...state.activeStopwatches.map(sw => sw.startTime))
@@ -158,23 +186,69 @@ export default function LiveGraphScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
 
-      {/* ── Container 1: Graph ── */}
-      <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-        {/* Compact timer above graph */}
-        <View style={styles.timerRow}>
-          <Text style={[styles.timerLabel, { color: subColor }]}>LIVE GRAPH</Text>
-          <Text style={[styles.timerValue, { color: textColor }]}>
-            {elapsedSinceFirst !== null ? formatElapsed(elapsedSinceFirst) : '--:--:--'}
+        {/* ── Screen headline ── */}
+        <View style={styles.headline}>
+          <Text style={[styles.headlineTitle, { color: textColor }]}>Live</Text>
+          <Text style={[styles.headlineSubtitle, { color: subColor }]}>
+            The current state of your trip
           </Text>
-          <Text style={[styles.timerSuffix, { color: subColor }]}>elapsed</Text>
         </View>
 
-        <Graph
-          ref={graphRef}
-          currentTime={now}
-          height={220}
-          colorScheme={colorScheme}
+        {/* ── Container: Overlay plans (moved to top, only when plans exist) ── */}
+        {state.plans.length > 0 && (
+          <View style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+            <Text style={[styles.overlayLabel, { color: subColor }]}>Overlay plans</Text>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.overlayChips}
+            >
+              {state.plans.map(plan => {
+                const isVisible = visiblePlanIds.has(plan.id);
+                return (
+                  <TouchableOpacity
+                    key={plan.id}
+                    style={[
+                      styles.planChip,
+                      {
+                        backgroundColor: isVisible ? accent : (isDark ? '#2A2D2F' : '#F0F0F0'),
+                        borderColor: isVisible ? accent : cardBorder,
+                      },
+                    ]}
+                    onPress={() => togglePlan(plan.id)}
+                  >
+                    <Text style={[styles.planChipText, { color: isVisible ? '#fff' : subColor }]}>
+                      {isVisible ? '☑' : '☐'} {plan.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── Container: Graph ── */}
+        <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+          {/* Compact timer above graph */}
+          <View style={styles.timerRow}>
+            <Text style={[styles.timerLabel, { color: subColor }]}>ELAPSED</Text>
+            <Text style={[styles.timerValue, { color: textColor }]}>
+              {elapsedSinceFirst !== null ? formatElapsed(elapsedSinceFirst) : '--:--:--'}
+            </Text>
+            <Text style={[styles.timerSuffix, { color: subColor }]}>since first dose</Text>
+          </View>
+
+          <Graph
+            ref={graphRef}
+            currentTime={now}
+            height={320}
+            colorScheme={colorScheme}
           planMarkers={planMarkers.length > 0 ? planMarkers : undefined}
           planCurves={planCurves.length > 0 ? planCurves : undefined}
           onIsPanned={setIsGraphPanned}
@@ -222,73 +296,58 @@ export default function LiveGraphScreen() {
         <GraphNavBar graphRef={graphRef} isDark={isDark} tint={accent} isPanned={isGraphPanned} isDay={isGraphDay} />
       </View>
 
-      {/* ── Container 2: Overlay plans (only when plans exist) ── */}
-      {state.plans.length > 0 && (
-        <View style={[styles.overlayCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-          <Text style={[styles.overlayLabel, { color: subColor }]}>Overlay plans</Text>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.overlayChips}
+      {/* ── Container: Stopwatches legend — collapsible, not scroll-constrained.
+             Collapsing/expanding never touches the graph; when expanded and the
+             list is long, the whole screen scrolls (see outer ScrollView) so
+             every running stopwatch is reachable. ── */}
+        <View style={[styles.legendCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+
+          {/* Header — tap to collapse/expand */}
+          <TouchableOpacity
+            style={[styles.legendHeader, { borderBottomColor: cardBorder }, legendCollapsed && styles.legendHeaderCollapsed]}
+            onPress={toggleLegend}
+            activeOpacity={0.7}
           >
-            {state.plans.map(plan => {
-              const isVisible = visiblePlanIds.has(plan.id);
-              return (
+            <View style={styles.legendHeaderTitleGroup}>
+              <Text style={[styles.legendChevron, { color: subColor }]}>{legendCollapsed ? '▸' : '▾'}</Text>
+              <Text style={[styles.legendTitle, { color: subColor }]}>
+                {isSelectMode
+                  ? `${selectedIds.size} selected`
+                  : `Running now${state.activeStopwatches.length > 0 ? ` · ${state.activeStopwatches.length}` : ''}`}
+              </Text>
+            </View>
+            <View style={styles.legendHeaderActions}>
+              {!legendCollapsed && activeSubstanceCount >= 2 && (
                 <TouchableOpacity
-                  key={plan.id}
-                  style={[
-                    styles.planChip,
-                    {
-                      backgroundColor: isVisible ? accent : (isDark ? '#2A2D2F' : '#F0F0F0'),
-                      borderColor: isVisible ? accent : cardBorder,
-                    },
-                  ]}
-                  onPress={() => togglePlan(plan.id)}
+                  onPress={() => router.push('/interactions?prefill=active')}
+                  style={[styles.interactionsBtn, { borderColor: cardBorder }]}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
                 >
-                  <Text style={[styles.planChipText, { color: isVisible ? '#fff' : subColor }]}>
-                    {isVisible ? '☑' : '☐'} {plan.name}
+                  <Text style={styles.interactionsBtnText}>⚠ Check Combo</Text>
+                </TouchableOpacity>
+              )}
+              {!legendCollapsed && isSelectMode && selectedIds.size > 0 && (
+                <TouchableOpacity onPress={handleDeleteSelected} style={styles.headerBtn}>
+                  <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Remove</Text>
+                </TouchableOpacity>
+              )}
+              {!legendCollapsed && state.activeStopwatches.length > 0 && (
+                <TouchableOpacity
+                  onPress={isSelectMode ? handleCancelSelect : () => setIsSelectMode(true)}
+                  style={styles.headerBtn}
+                >
+                  <Text style={[styles.headerBtnText, { color: accent }]}>
+                    {isSelectMode ? 'Cancel' : 'Select'}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-        </View>
-      )}
+              )}
+            </View>
+          </TouchableOpacity>
 
-      {/* ── Container 3: Stopwatches legend (flex: 1, internally scrollable) ── */}
-      <View style={[styles.legendCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-
-        {/* Sticky header */}
-        <View style={[styles.legendHeader, { borderBottomColor: cardBorder }]}>
-          <Text style={[styles.legendTitle, { color: subColor }]}>
-            {isSelectMode
-              ? `${selectedIds.size} selected`
-              : 'Running now'}
-          </Text>
-          <View style={styles.legendHeaderActions}>
-            {isSelectMode && selectedIds.size > 0 && (
-              <TouchableOpacity onPress={handleDeleteSelected} style={styles.headerBtn}>
-                <Text style={[styles.headerBtnText, { color: '#FF3B30' }]}>Remove</Text>
-              </TouchableOpacity>
-            )}
-            {state.activeStopwatches.length > 0 && (
-              <TouchableOpacity
-                onPress={isSelectMode ? handleCancelSelect : () => setIsSelectMode(true)}
-                style={styles.headerBtn}
-              >
-                <Text style={[styles.headerBtnText, { color: accent }]}>
-                  {isSelectMode ? 'Cancel' : 'Select'}
-                </Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-
-        {/* Scrollable stopwatch rows */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.legendList}
-        >
+          {/* Stopwatch rows — plain View, not its own ScrollView, so it grows
+              naturally and the outer page ScrollView handles overflow. */}
+          {!legendCollapsed && (
+          <View style={styles.legendList}>
           {state.activeStopwatches.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: subColor }]}>
@@ -378,10 +437,13 @@ export default function LiveGraphScreen() {
               );
             })
           )}
-        </ScrollView>
-      </View>
+          </View>
+          )}
+        </View>
 
-      {/* FAB: add stopwatch */}
+      </ScrollView>
+
+      {/* FAB: add stopwatch (floats above the scrolling content) */}
       <TouchableOpacity
         style={[styles.fab, { backgroundColor: accent }]}
         onPress={() => setAddVisible(true)}
@@ -414,8 +476,30 @@ export default function LiveGraphScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  scroll: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 12,
     gap: 8,
+    paddingBottom: 100, // keep content clear of the FAB
+  },
+
+  // ── Screen headline ──────────────────────────────────────────────────────
+  headline: {
+    paddingHorizontal: 4,
+    paddingBottom: 2,
+    gap: 2,
+  },
+  headlineTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  headlineSubtitle: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 
   // ── Container 1: graph ──────────────────────────────────────────────────
@@ -481,9 +565,8 @@ const styles = StyleSheet.create({
   },
   planChipText: { fontSize: 12, fontWeight: '500' },
 
-  // ── Container 3: legend ────────────────────────────────────────────────
+  // ── Container 3: legend (collapsible; height follows its content) ──────
   legendCard: {
-    flex: 1,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
@@ -495,6 +578,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  legendHeaderCollapsed: {
+    borderBottomWidth: 0,
+  },
+  legendHeaderTitleGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  legendChevron: {
+    fontSize: 12,
   },
   legendTitle: {
     fontSize: 11,
@@ -509,6 +603,17 @@ const styles = StyleSheet.create({
   },
   headerBtn: { paddingVertical: 2 },
   headerBtnText: { fontSize: 14, fontWeight: '500' },
+  interactionsBtn: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  interactionsBtnText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FF9500',
+  },
   legendList: { paddingBottom: 8 },
 
   emptyState: { padding: 28, alignItems: 'center' },

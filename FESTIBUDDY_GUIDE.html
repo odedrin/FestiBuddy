@@ -391,9 +391,9 @@
       <li><a href="#model">2. Superposition Model</a></li>
       <li><a href="#types">3. Stopwatch Types</a></li>
       <li class="section"><a href="#screens">Screens</a></li>
-      <li><a href="#graph">4.1 Live Graph</a></li>
-      <li><a href="#types-screen">4.2 Types</a></li>
-      <li><a href="#plan-mode">4.3 Plan</a></li>
+      <li><a href="#graph">4.1 Live</a></li>
+      <li><a href="#plan-mode">4.2 Plan</a></li>
+      <li><a href="#combos">4.3 Combos</a></li>
       <li><a href="#substances">4.4 Substances</a></li>
       <li><a href="#interactions">4.5 Drug Interactions</a></li>
       <li><a href="#settings">4.6 Settings</a></li>
@@ -413,11 +413,11 @@
       <h1>Festi<span>Bud</span></h1>
       <p style="color:var(--sub); font-size:16px;">User Guide &amp; Product Documentation</p>
       <div class="meta-pills">
-        <span class="pill">v1.5</span>
+        <span class="pill">v1.7</span>
         <span class="pill">iOS / Android</span>
         <span class="pill">React Native + Expo</span>
         <span class="pill">Fully offline</span>
-        <span class="pill">June 2026</span>
+        <span class="pill">July 2026</span>
       </div>
     </div>
 
@@ -574,7 +574,7 @@
       </div>
 
       <h3>Substance types</h3>
-      <p>A third category — <strong>substance types</strong> — ships bundled with the app. These are read-only profiles derived from PsychonautWiki pharmacokinetic data (oral ROA midpoints unless otherwise noted). They behave like built-in types in that they cannot be deleted or edited, but they are displayed separately under a <strong>Substances</strong> section in both the Types screen and the Add Stopwatch sheet.</p>
+      <p>A third category — <strong>substance types</strong> — ships bundled with the app. These are read-only profiles derived from PsychonautWiki pharmacokinetic data (oral ROA midpoints unless otherwise noted). They behave like built-in types in that they cannot be deleted or edited, but they are displayed separately under a <strong>Substances</strong> section in both the Substances Library (Settings → Manage) and the Add Stopwatch sheet.</p>
       <p>The 16 bundled substances are:</p>
       <ul>
         <li><strong>Empathogens:</strong> MDMA, MDA</li>
@@ -587,16 +587,23 @@
       <p>Substance types are never stored in AsyncStorage — they are always merged from code at hydration time so that bundled data updates automatically when the app is updated.</p>
 
       <h3>Custom types</h3>
-      <p>Custom types appear <strong>above</strong> built-in types in the Types screen and can be edited or deleted at any time. Create one from scratch via the editor, or tap <strong>Customize</strong> on any built-in to duplicate it.</p>
+      <p>Custom types appear <strong>above</strong> built-in types in the Substances Library and can be edited or deleted at any time. Create one from scratch via the editor, or tap <strong>Customize</strong> on any built-in to duplicate it.</p>
     </section>
 
     <!-- ── 4. Screens ── -->
     <section id="graph">
-      <h2><span class="sec-num">4.1</span> Live Graph Screen</h2>
-      <p>The main operational view. Shows the full superposition graph alongside a scrollable legend of all running stopwatches, updating every second. The screen is divided into three always-visible containers.</p>
+      <h2><span class="sec-num">4.1</span> Live Screen</h2>
+      <p>The main operational view. Shows the full superposition graph alongside a scrollable legend of all running stopwatches, updating every second. A bold "Live" headline and the subtitle "The current state of your trip" sit at the top of the screen so its purpose is clear at a glance. The whole screen is a vertical scroll view, so expanding the legend (see Container 3) never has to shrink the graph — it just pushes below the fold and you scroll to see it.</p>
 
-      <h4>Container 1 — Graph card</h4>
-      <p>A compact elapsed timer sits above the graph: a "LIVE GRAPH" label, the wall-clock time since the earliest running stopwatch (HH:MM:SS), and an "elapsed" suffix.</p>
+      <h4>Container 1 — Overlay plans</h4>
+      <p>Sits at the top of the screen, above the graph. Only shown when at least one plan exists. A horizontal row of chips — one per saved plan — lets you toggle any plan's entries onto the graph without navigating away. The overlay mode (Markers or Curves) is controlled in Settings → <strong>Plan overlay</strong>:</p>
+      <ul>
+        <li><strong>Markers</strong> (default) — a vertical start-time line per entry, labeled with plan and substance name.</li>
+        <li><strong>Curves</strong> — draws the full predicted curve for each plan entry at its type color, overlaid on the live graph.</li>
+      </ul>
+
+      <h4>Container 2 — Graph card</h4>
+      <p>A compact elapsed timer sits above the graph: an "ELAPSED" label, the wall-clock time since the earliest running stopwatch (HH:MM:SS), and a "since first dose" suffix.</p>
       <ul>
         <li><strong>Teal line (sum)</strong> — superposition y(t). Solid past, dashed future at 45% opacity.</li>
         <li><strong>Colored lines (individual)</strong> — each running stopwatch at its type color. 45% opacity past, 20% future.</li>
@@ -614,15 +621,8 @@
         <li><strong>›  »</strong> — pan forward by 50% / 100% of the current window width</li>
       </ul>
 
-      <h4>Container 2 — Overlay plans</h4>
-      <p>Only shown when at least one plan exists. A horizontal row of chips — one per saved plan — lets you toggle any plan's entries onto the graph without navigating away. The overlay mode (Markers or Curves) is controlled in Settings → <strong>Plan overlay</strong>:</p>
-      <ul>
-        <li><strong>Markers</strong> (default) — a vertical start-time line per entry, labeled with plan and substance name.</li>
-        <li><strong>Curves</strong> — draws the full predicted curve for each plan entry at its type color, overlaid on the live graph.</li>
-      </ul>
-
       <h4>Container 3 — Running now (legend)</h4>
-      <p>A flex card that takes all remaining vertical space and scrolls internally. A sticky header shows the title ("Running now" or "N selected") plus action buttons:</p>
+      <p>A collapsible card below the graph. Tapping its header (or the chevron) toggles it open/closed; the header always shows the title ("Running now · N" or "N selected") regardless of collapsed state. Collapsing it never resizes the graph — it only hides the stopwatch rows. When expanded, the row list is a plain (non-scrolling) view, so if it's taller than the screen you scroll the whole page to reach the rest of the list rather than the legend scrolling internally. When expanded, action buttons also appear in the header:</p>
       <ul>
         <li><strong>Select / Cancel</strong> — enters multi-select mode (visible when at least one stopwatch is running). Long-pressing any row also enters select mode and selects that row. In select mode a <strong>Remove</strong> button appears; tapping it shows a confirmation prompt before deleting all selected stopwatches.</li>
       </ul>
@@ -638,73 +638,93 @@
       </ul>
 
       <h4>+ FAB</h4>
-      <p>A floating action button in the bottom-right corner opens the <strong>Add Stopwatch</strong> bottom sheet. It lists all types (favorites first, then general, then Substances), may show colored <strong>interaction badges</strong> for known interactions with active stopwatches (see §4.5 for badge icons), and includes <strong>↗</strong> links to PsychonautWiki for substance types. Tap <strong>▶ Start</strong> to launch an instance. If the type is a substance with a Caution, Unsafe, or Dangerous interaction and Warning Popups are enabled, a blocking confirmation modal appears first.</p>
-    </section>
-
-    <section id="types-screen">
-      <h2><span class="sec-num">4.2</span> Types Screen</h2>
-      <p>Manage your stopwatch type library. Sections: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. Types you've hidden appear in a collapsible <strong>Hidden</strong> section at the bottom.</p>
-
-      <h4>Type cards</h4>
-      <p>Each card shows the type name, a mini sparkline curve preview, total duration, a four-phase breakdown table (duration and proportion per phase), and a segmented proportion bar. Action buttons:</p>
-      <ul>
-        <li><strong>▶ Start</strong> — starts an instance directly from this screen. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first.</li>
-        <li><strong>Customize / Edit</strong> — opens the type editor</li>
-        <li><strong>Hide</strong> — moves the type card to the collapsible Hidden section at the bottom of the screen. The type still works normally; it just de-clutters the main list.</li>
-        <li><strong>✕</strong> — deletes the type (custom only; confirmation required)</li>
-        <li><strong>★ / ☆</strong> — toggles favorite. Favorited types appear first in the add-stopwatch sheet.</li>
-        <li><strong>↗</strong> — (substance types only) opens the substance's PsychonautWiki article in the system browser.</li>
-      </ul>
-      <p>If any instances of a type are currently running, a small count badge (pill in the type's color) appears next to the name.</p>
-
-      <h4>Hiding a type</h4>
-      <p>Tap <strong>Hide</strong> on any type card to remove it from its section without deleting it. The type keeps all its settings and can still be started from the Add Stopwatch sheet. A collapsible <strong>Hidden (n)</strong> section appears at the bottom of the Types screen. Expand it to see all hidden types; each card shows an <strong>Unhide</strong> button that returns the type to its original section. Hidden state is persisted in AsyncStorage.</p>
+      <p>A floating action button in the bottom-right corner, fixed in place regardless of scroll position, opens the <strong>Add Stopwatch</strong> bottom sheet. It lists all types (favorites first, then general, then Substances), may show colored <strong>interaction badges</strong> for known interactions with active stopwatches (see §4.5 for badge icons), and includes <strong>↗</strong> links to PsychonautWiki for substance types. Tap <strong>▶ Start</strong> to launch an instance. If the type is a substance with a Caution, Unsafe, or Dangerous interaction and Warning Popups are enabled, a blocking confirmation modal appears first.</p>
     </section>
 
     <section id="plan-mode">
-      <h2><span class="sec-num">4.3</span> Plan Screen</h2>
+      <h2><span class="sec-num">4.2</span> Plan Screen</h2>
       <p>A <strong>permanent tab</strong> for hypothetically placing entries and previewing the curve <strong>without starting any real stopwatches</strong>.</p>
       <div class="callout">
         Example use: "If I start an Extended now and a Quick in 45 minutes, what does my evening curve look like?"
       </div>
 
       <h4>Layout</h4>
-      <p>The screen uses a fixed flex layout — no outer scroll — so all four areas are always visible:</p>
+      <p>The screen headline ("Plan" + a one-line description) and the chip bar are fixed at the top. Everything below scrolls in a single outer <code>ScrollView</code> — the same pattern used on the Live screen — so collapsing a card never shrinks the graph; the page scrolls to reveal content instead:</p>
       <ol>
-        <li><strong>Chip bar</strong> (top) — switches between saved plans. Horizontal scroll if many plans exist.</li>
-        <li><strong>Graph card</strong> (fixed height) — previews the selected plan's curve.</li>
-        <li><strong>Entry card</strong> (flex, takes remaining space) — scrollable list of plan entries.</li>
-        <li><strong>Interactions card</strong> (bounded height, only shown when interactions exist) — scrollable list of interaction pairs for the current plan.</li>
+        <li><strong>Headline</strong> (fixed) — screen title and a short explanation of what the screen is for.</li>
+        <li><strong>Chip bar</strong> (fixed) — switches between saved plans. Horizontal scroll if many plans exist.</li>
+        <li><strong>Graph card</strong> (fixed height, scrolls with the page) — previews the selected plan's curve.</li>
+        <li><strong>Entry card</strong> (collapsible) — list of plan entries, with an <strong>✏ Edit</strong> button in its header.</li>
+        <li><strong>Interactions card</strong> (collapsible, only shown when interactions exist) — full list of interaction pairs for the current plan.</li>
       </ol>
 
       <h4>Managing plans</h4>
       <p>The chip bar at the top lists all saved plans.</p>
       <ul>
         <li><strong>Tap</strong> a chip to select it</li>
-        <li><strong>Long-press</strong> for rename / delete options</li>
-        <li><strong>✏ pencil icon</strong> on the selected chip — opens the rename dialog inline. The dialog also contains a <strong>Delete Plan</strong> button (red, below a divider) for quick deletion without closing and long-pressing.</li>
-        <li><strong>+ New</strong> — creates a new empty plan</li>
+        <li><strong>Long-press</strong> for rename / delete options (opens the same rename dialog used previously)</li>
+        <li><strong>+ New</strong> — opens the <strong>New Plan</strong> popup (see below) instead of creating an empty plan instantly</li>
       </ul>
 
+      <h4>Creating a plan</h4>
+      <p>Tapping <strong>+ New</strong> opens a <strong>New Plan</strong> sheet covering most of the screen:</p>
+      <ol>
+        <li>Enter a name, or keep the suggested default (e.g. "Plan 3").</li>
+        <li>Tap <strong>+ Add substance</strong> to open the familiar type list + anchor-mode time picker (Start at / Peak at / Comedown). Confirming stages it into a list within the sheet — nothing is saved to the plan yet.</li>
+        <li>Repeat to add as many substances as needed, including the <strong>same substance more than once</strong> (e.g. planning a redose).</li>
+        <li>Each staged row has its own <strong>Edit</strong> (reopens the time picker) and <strong>✕</strong> (remove) button, so the whole plan can be adjusted before committing.</li>
+        <li>Adding a substance that interacts with one already staged triggers the same blocking interaction warning popup described below.</li>
+        <li>Tap <strong>Done</strong> to create the plan with everything staged, or <strong>Cancel</strong> to discard the draft entirely.</li>
+      </ol>
+
+      <h4>Editing a plan</h4>
+      <p>The <strong>✏ Edit</strong> button in the entry card's header (not tucked into the chip bar) opens an <strong>Edit Plan</strong> sheet — the same staged add/edit/delete-substance UI as New Plan, pre-filled with the selected plan's current name and entries:</p>
+      <ul>
+        <li>Rename the plan via the name field.</li>
+        <li>Add, edit (time), or delete substances the same way as when creating a plan.</li>
+        <li>Tap <strong>Save</strong> to commit the name and entries in one update, or <strong>Cancel</strong> to discard changes.</li>
+        <li>A <strong>Delete Plan</strong> action sits at the bottom of the sheet (closes the sheet immediately, then runs the same confirmation as long-pressing a chip).</li>
+      </ul>
+      <p>This is the primary way to add substances to an existing plan — there is no more "+" FAB on the Plan screen.</p>
+
       <h4>Plan graph</h4>
-      <p>The graph previews the selected plan using vertical <strong>start-time markers</strong> for each entry — no live stopwatch curves are shown. The graph updates in real time so markers shift correctly as minutes pass.</p>
-      <p>The same <strong>off-screen indicator pills</strong> as on the Live Graph appear here: <strong>‹ N</strong> on the left edge when N plan entries have already ended before the visible window, and <strong>N ›</strong> on the right when N entries haven't started yet relative to the right edge.</p>
-      <p>The same <strong>navigation bar</strong> as on the Live Graph screen appears below the plan graph — «, ‹, Now, Day, ›, » — with identical pan/zoom behaviour and highlight logic.</p>
+      <p>The graph previews the selected plan using vertical <strong>start-time markers</strong> for each entry — no live stopwatch curves are shown. The graph updates in real time so markers shift correctly as minutes pass. It renders at a fixed height (matching the Live screen's graph card) since the page around it scrolls rather than the card flexing to fill space.</p>
+      <p>The same <strong>off-screen indicator pills</strong> as on the Live screen appear here: <strong>‹ N</strong> on the left edge when N plan entries have already ended before the visible window, and <strong>N ›</strong> on the right when N entries haven't started yet relative to the right edge.</p>
+      <p>The same <strong>navigation bar</strong> as on the Live screen appears below the plan graph — «, ‹, Now, Day, ›, » — with identical pan/zoom behaviour and highlight logic.</p>
 
       <h4>Plan entries</h4>
-      <p>Each entry in the scrollable card shows: type color dot, type name, duration, and the planned wall-clock time (e.g. "Today 22:30"). Action buttons: <strong>Edit</strong> (opens the time editor) and <strong>✕</strong> (deletes the entry).</p>
-      <p>Tap the <strong>+ FAB</strong> to add a new entry: pick a type, set the timing using one of the three anchor modes (Start at, Peak at, Comedown), tap <strong>Add Entry</strong>. The same modes are available when editing.</p>
+      <p>The entry card's header shows the plan name, an entry count, and a chevron (▾/▸) — tap anywhere in the header to collapse or expand the card. Each entry shows: type color dot, type name, duration, and the planned wall-clock time (e.g. "Today 22:30"). Action buttons: <strong>Edit</strong> (opens the time editor) and <strong>✕</strong> (deletes the entry). When expanded, the list is not independently scrollable — it renders at full height and the outer page scrolls, so every entry is reachable without a cramped inner scroll box.</p>
       <p>When adding a <strong>substance type</strong> that would interact with substances already in the plan, an interaction warning popup appears (if Warning Popups are enabled in Settings) before the entry is committed. Tap <strong>Add anyway</strong> to proceed or <strong>Cancel</strong> to discard.</p>
       <p>Entries store an <strong>absolute target time</strong>, so a plan created today can include entries scheduled for tomorrow or later without drift.</p>
 
       <h4>Persistent interaction warnings</h4>
-      <p>A dedicated <strong>Interactions card</strong> below the entry list shows all known interaction pairs between substance entries in the plan — sorted by severity (Dangerous first). Each row shows a severity badge and the two substance names; tap to expand the clinical note. This card only appears when Warning Popups are enabled in Settings and the plan contains at least two interacting substances.</p>
+      <p>A dedicated, collapsible <strong>Interactions card</strong> below the entry list shows all known interaction pairs between substance entries in the plan — sorted by severity (Dangerous first). Its header shows a pair count and a chevron, same as the entry card. Each row shows a severity badge and the two substance names; tap to expand the clinical note. This card only appears when Warning Popups are enabled in Settings and the plan contains at least two interacting substances.</p>
+    </section>
+
+    <!-- ── 4.3 Combos ── -->
+    <section id="combos">
+      <h2><span class="sec-num">4.3</span> Combos Screen</h2>
+      <p>A <strong>permanent tab</strong> (labelled <strong>Combos</strong> in the tab bar) dedicated to checking substance combinations. On-screen it's titled <strong>"Check a Combo"</strong>, with a one-line description underneath — the same headline treatment as the Live and Plan screens.</p>
+      <p>This is deliberately its own tab rather than a page tucked inside Settings or a searchable list of every pair: it's the app's harm-reduction reference of record, so it needs to stay one tap away regardless of what else is going on.</p>
+
+      <h4>Picking a combination</h4>
+      <p>All 16 bundled substances appear as a wrapped grid of chips, each tinted with the substance's own color. The flow:</p>
+      <ol>
+        <li>Tap a substance to select it — its chip fills solid. Every other substance with known interaction data against it gets a small corner badge, using the same icon set as elsewhere (<strong>⚠</strong> Dangerous/Unsafe/Caution, <strong>↑</strong> Synergy, <strong>↓</strong> Decrease, <strong>▲</strong> No Synergy), so you can see at a glance which second pick will actually show something.</li>
+        <li>Tap a second substance. Both chips highlight, and an <strong>explanation card</strong> pinned to the bottom of the screen shows the severity badge, both substance names (each with a <strong>ⓘ</strong> link to PsychonautWiki), and the full clinical note. If no data exists for that specific pair, the card instead reads <strong>"No documented interaction"</strong> with a reminder that this doesn't mean the combination is safe.</li>
+        <li>Only two substances can be selected at once. While two are picked, every other chip dims and stops responding to taps — tap one of the two selected chips again to deselect it before picking a different combination.</li>
+      </ol>
+
+      <div class="callout">Badges on this screen are shown unconditionally, even if <strong>Interaction Badges</strong> is turned off in Settings. That toggle only controls the incidental badges in the Add Stopwatch sheet and Substances Library — Combos exists specifically to check combinations, so it never hides that information.</div>
+
+      <h4>Quick access from Live</h4>
+      <p>When 2 or more substances are currently running, a small <strong>⚠ Check Combo</strong> button appears in the "Running now" card header on the Live screen. Tapping it jumps straight to the Combos tab with those substances pre-selected, so the explanation card is visible immediately.</p>
     </section>
 
     <!-- ── 4.4 Substances ── -->
     <section id="substances">
       <h2><span class="sec-num">4.4</span> Substance Database</h2>
-      <p>The Types screen has a third section — <strong>Substances</strong> — showing the 16 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
+      <p>The Substances Library (in Settings) has a third section — <strong>Substances</strong> — showing the 16 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
 
       <h4>PK data quality</h4>
       <p>All durations are population midpoints sourced from <strong>PsychonautWiki</strong> and cross-referenced with TripSit. They represent typical oral ROA timings (exceptions: DMT is smoked, Ketamine is intranasal, Cocaine is insufflated, Nicotine is smoked, Cannabis smoked vs. edible are separate profiles). Individual responses vary significantly with dose, bodyweight, tolerance, and metabolism.</p>
@@ -735,7 +755,7 @@
     <!-- ── 4.5 Drug Interactions ── -->
     <section id="interactions">
       <h2><span class="sec-num">4.5</span> Drug Interactions</h2>
-      <p>FestiBud bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, FestiBud warns you before you commit — either at stopwatch start or plan entry add.</p>
+      <p>FestiBud bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, FestiBud warns you before you commit — either at stopwatch start or plan entry add. To browse or look up a combination directly, see the <strong>Combos</strong> tab (§4.3).</p>
 
       <h4>Severity levels</h4>
       <table>
@@ -768,7 +788,7 @@
     <!-- ── 4.6 Settings ── -->
     <section id="settings">
       <h2><span class="sec-num">4.6</span> Settings</h2>
-      <p>Accessed via the gear icon tab. Contains app-wide preferences and attribution.</p>
+      <p>Accessed via the gear icon tab. Contains app-wide preferences, the Substances Library, and attribution.</p>
 
       <h4>Appearance</h4>
       <ul>
@@ -780,6 +800,22 @@
         <li><strong>Interaction Badges</strong> — toggle (on by default). When enabled, a colored badge appears next to any substance in the Add Stopwatch or Add Plan Entry sheet when that substance has a known interaction with a currently active stopwatch or existing plan entry. The badge icon reflects the interaction type: <strong>⚠</strong> Dangerous/Unsafe/Caution, <strong>↑</strong> Low Risk &amp; Synergy, <strong>↓</strong> Low Risk &amp; Decrease, <strong>▲</strong> Low Risk &amp; No Synergy. When a substance has multiple simultaneous interactions, the most important one is shown (Synergy takes priority over Decrease, which takes priority over No Synergy). Disable to hide all badges while keeping warning popups active.</li>
         <li><strong>Warning Popups</strong> — toggle (on by default). When enabled, a blocking confirmation modal appears before starting a substance stopwatch or adding a plan entry that creates a known interaction. Also controls the persistent Interactions panel at the bottom of the Plan screen. Disable to proceed silently without any blocking dialog.</li>
       </ul>
+
+      <h4>Substances Library</h4>
+      <p>Formerly a standalone <strong>Types</strong> tab — now a collapsible section embedded directly in Settings, collapsed by default behind a single <strong>Manage</strong> row that shows a live count of configured types (e.g. "12 types configured"). Tapping the row, or its ▼ / ▲ chevron, expands the full type-management list in place; there is no separate screen to navigate to.</p>
+      <p>While expanded, the <strong>Manage</strong> row is <strong>sticky</strong>: as you scroll down through the type list, the row stays pinned to the top of the screen so it can be collapsed again from anywhere without first scrolling back up. Collapsing it returns Settings to its normal single-row footprint.</p>
+      <p>Expanded sections, in order: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. Types you've hidden appear in a nested, non-sticky collapsible <strong>Hidden</strong> section at the bottom — independent of the outer sticky toggle.</p>
+      <p><strong>Type cards.</strong> Each card shows the type name, a mini sparkline curve preview, total duration, a four-phase breakdown table (duration and proportion per phase), and a segmented proportion bar. Action buttons:</p>
+      <ul>
+        <li><strong>▶ Start</strong> — starts an instance directly from here. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first.</li>
+        <li><strong>Customize / Edit</strong> — opens the type editor</li>
+        <li><strong>Hide</strong> — moves the type card to the collapsible Hidden section. The type still works normally; it just de-clutters the main list.</li>
+        <li><strong>✕</strong> — deletes the type (custom only; confirmation required)</li>
+        <li><strong>★ / ☆</strong> — toggles favorite. Favorited types appear first in the add-stopwatch sheet.</li>
+        <li><strong>↗</strong> — (substance types only) opens the substance's PsychonautWiki article in the system browser.</li>
+      </ul>
+      <p>If any instances of a type are currently running, a small count badge (pill in the type's color) appears next to the name.</p>
+      <p><strong>Hiding a type.</strong> Tap <strong>Hide</strong> on any type card to remove it from its section without deleting it. The type keeps all its settings and can still be started from the Add Stopwatch sheet. A collapsible <strong>Hidden (n)</strong> section appears at the bottom of the list. Expand it to see all hidden types; each card shows an <strong>Unhide</strong> button that returns the type to its original section. Hidden state is persisted in AsyncStorage.</p>
 
       <h4>Graph</h4>
       <ul>
@@ -899,24 +935,27 @@
 <span class="dir">app/</span>
 <span class="dir">├── (tabs)/</span>
 <span class="file">│   ├── index.tsx        </span><span class="comment">— Redirects to explore (no tab)</span>
-<span class="file">│   ├── explore.tsx      </span><span class="comment">— Live Graph screen — default tab (graph + stopwatch legend + FAB)</span>
+<span class="file">│   ├── explore.tsx      </span><span class="comment">— Live screen — default tab (graph + stopwatch legend + FAB)</span>
 <span class="file">│   ├── plan.tsx         </span><span class="comment">— Plan screen (permanent tab)</span>
-<span class="file">│   ├── types.tsx        </span><span class="comment">— Types screen</span>
-<span class="file">│   └── settings.tsx     </span><span class="comment">— Settings screen</span>
+<span class="file">│   ├── interactions.tsx </span><span class="comment">— Combos tab ("Check a Combo"): substance chip grid, pairwise selection (max 2), bottom explanation card. Badges here ignore showInteractionBadges by design</span>
+<span class="file">│   └── settings.tsx     </span><span class="comment">— Settings screen, including the collapsible Substances Library section (sticky "Manage" toggle + embedded TypesSection)</span>
 <span class="file">└── _layout.tsx          </span><span class="comment">— Root stack + StopwatchProvider</span>
 
 <span class="dir">components/</span>
 <span class="file">├── Graph.tsx                 </span><span class="comment">— SVG graph (react-native-svg)</span>
 <span class="file">├── StopwatchCard.tsx         </span><span class="comment">— Card with progress bar</span>
 <span class="file">├── TypeCard.tsx              </span><span class="comment">— Card with sparkline</span>
+<span class="file">├── TypesSection.tsx          </span><span class="comment">— Full type-management UI (list, add/edit/favorite/hide/delete). Formerly the standalone Types screen; now embedded inline inside Settings' Substances Library section — no SafeAreaView/ScrollView of its own</span>
 <span class="file">├── TypeEditorModal.tsx       </span><span class="comment">— Type create/edit form</span>
 <span class="file">├── AddStopwatchModal.tsx     </span><span class="comment">— Bottom sheet: start a stopwatch</span>
 <span class="file">├── EditStopwatchStartModal.tsx</span><span class="comment">— Bottom sheet: edit running stopwatch start time</span>
-<span class="file">├── AddPlanEntryModal.tsx      </span><span class="comment">— Bottom sheet: add plan entry</span>
-<span class="file">├── EditPlanEntryModal.tsx     </span><span class="comment">— Bottom sheet: edit entry time</span>
+<span class="file">├── AddPlanEntryModal.tsx      </span><span class="comment">— Bottom sheet: add plan entry. Accepts <code>modal?: boolean</code> (default true) to render as an absoluteFill overlay instead of a native Modal when nested inside another one</span>
+<span class="file">├── EditPlanEntryModal.tsx     </span><span class="comment">— Bottom sheet: edit entry time. Same <code>modal</code> prop as above</span>
+<span class="file">├── CreatePlanModal.tsx        </span><span class="comment">— "New Plan" sheet: name + staged add/edit/delete substances, nests AddPlanEntryModal/EditPlanEntryModal/InteractionWarningModal with <code>modal={false}</code></span>
+<span class="file">├── EditPlanModal.tsx          </span><span class="comment">— "Edit Plan" sheet: same staged UI as CreatePlanModal, pre-filled from the live plan, plus Save and Delete Plan</span>
 <span class="file">├── PlanEntryEditor.tsx        </span><span class="comment">— Shared editor UI for plan entry timing (all three anchor modes)</span>
 <span class="file">├── TimePickers.tsx            </span><span class="comment">— HH:MM clock picker and minute-adjustment controls</span>
-<span class="file">├── InteractionWarningModal.tsx</span><span class="comment">— Blocking popup for drug interaction warnings (start / add flows)</span>
+<span class="file">├── InteractionWarningModal.tsx</span><span class="comment">— Blocking popup for drug interaction warnings (start / add flows). Accepts <code>modal?: boolean</code> for the same nested-overlay use case</span>
 <span class="file">└── InteractionWarnings.tsx    </span><span class="comment">— Persistent warnings panel (rendered in Plan Mode)</span>
 
 <span class="dir">engine/</span>
@@ -929,7 +968,9 @@
 <span class="file">└── models.ts            </span><span class="comment">— TypeScript interfaces (StopwatchType, ActiveStopwatch, Plan, PlannedEntry)</span>
 
 <span class="dir">utils/</span>
-<span class="file">└── formatOffset.ts      </span><span class="comment">— Human-readable duration strings for plan offsets</span>
+<span class="file">├── formatOffset.ts      </span><span class="comment">— Human-readable duration strings for plan offsets</span>
+<span class="file">├── formatEntryTime.ts   </span><span class="comment">— "Today 22:30" / "Tomorrow 22:30" / "+2d 22:30" style formatting for a plan entry's absolute target time</span>
+<span class="file">└── genLocalId.ts        </span><span class="comment">— Locally-unique id generator for entries staged client-side in CreatePlanModal/EditPlanModal before they're committed</span>
 
 <span class="dir">constants/</span>
 <span class="file">├── defaultTypes.ts      </span><span class="comment">— Built-in types + color palette</span>
@@ -947,7 +988,7 @@
   plans:                   Plan[];                 // saved plans
   showInteractionWarnings: boolean;                // toggle for blocking warning popups (default: true)
   showInteractionBadges:   boolean;                // toggle for ⚠ badges in type lists (default: true)
-  planOverlayMode:         'markers' | 'curves';  // how toggled-on plans appear on the Live Graph screen
+  planOverlayMode:         'markers' | 'curves';  // how toggled-on plans appear on the Live screen
 }</code></pre>
       <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types (<code>isBuiltIn: true</code>) and substance types (<code>isSubstance: true</code>) are always restored from code at hydration and are never saved to AsyncStorage — only custom types are merged from storage. This means bundled data updates automatically when the app version is updated.</div>
 
@@ -1026,6 +1067,19 @@ interface PlanMarker {
 }</code></pre>
       <p>On hydration, older persisted entries with <code>offsetMinutes</code> are automatically migrated: <code>targetTime = Date.now() + offsetMinutes × 60 000</code>.</p>
 
+      <h3>Plan-related context methods</h3>
+      <p>Exposed by <code>useStopwatch()</code> from <code>store/StopwatchContext.tsx</code>:</p>
+      <table>
+        <thead><tr><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>addPlan(name)</code></td><td>Creates an empty plan. Still used internally, but no longer wired to any button — <strong>+ New</strong> now opens the New Plan sheet instead.</td></tr>
+          <tr><td><code>createPlanWithEntries(name, entries)</code></td><td>Creates a plan and its entries in a single dispatch and returns the new plan's <code>id</code> synchronously — powers the New Plan sheet's <strong>Done</strong> action. <code>entries</code> is an array of <code>{ typeId, targetTime }</code>; each entry gets its own freshly-generated id.</td></tr>
+          <tr><td><code>savePlanEdits(planId, name, entries)</code></td><td>Atomically renames a plan and replaces its entire <code>entries</code> array in one dispatch — powers the Edit Plan sheet's <strong>Save</strong> action.</td></tr>
+          <tr><td><code>renamePlan(id, name)</code> / <code>deletePlan(id)</code></td><td>Used by the chip bar's long-press rename dialog and by both plan sheets' Delete Plan actions.</td></tr>
+          <tr><td><code>addPlanEntry</code> / <code>removePlanEntry</code> / <code>updatePlanEntry</code></td><td>Single-entry operations, still used by the entry card's per-row Edit/✕ actions.</td></tr>
+        </tbody>
+      </table>
+
       <h3>formatOffset utility</h3>
       <p><code>utils/formatOffset.ts</code> — converts a millisecond delta to a compact human-readable string used throughout plan UI:</p>
       <pre><code>formatOffset(diffMs: number): string
@@ -1052,10 +1106,18 @@ interface PlanMarker {
         </li>
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">3</span>
-          <div><strong>Show interactions table in-app</strong><p>A dedicated interactions screen (or modal) showing a substance × substance matrix for all 16 bundled profiles. Each cell displays the severity badge (☠ Dangerous, ⚠ Unsafe, ⚡ Caution, etc.) color-coded by risk level. Tapping a cell expands the clinical note inline. The view should offer two modes: <strong>All substances</strong> (full matrix, filterable by name) and <strong>Active now</strong> (filtered to only the substances currently running as stopwatches or present in the selected plan). Interactive buttons on each row/column header let users jump directly to that substance's PsychonautWiki page. The screen should be accessible from both the Settings tab and as a quick-access button on the Stopwatches screen when multiple substances are active.</p></div>
+          <div><strong>Simplify type customization screen</strong><p>The current type editor exposes all parameters at once (onset/comeup/peak/offset durations, peak value, onset end fraction, curve shapes per phase), which is overwhelming for new users. Redesign it with a <strong>simple mode</strong> — a small set of high-level controls (e.g. total duration, intensity, speed of onset) that map to sensible underlying parameters automatically — and an <strong>advanced mode</strong> toggle for users who want full control. The live sparkline preview should remain prominent in both modes so changes are immediately visual.</p></div>
         </li>
         <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
           <span style="color:var(--teal); font-weight:800; flex-shrink:0;">4</span>
+          <div><strong>Rename "Stopwatches" to a better term</strong><p>The word "stopwatch" is technically accurate but feels clinical and unfamiliar in a harm reduction context. Find a term that better communicates "active substance I'm currently tracking" — candidates include <em>Sessions</em>, <em>Active doses</em>, <em>Trackers</em>, or <em>Running</em>. The rename would touch the tab label, screen titles, card copy, and all in-app references. Decision should be made alongside UX review of the overall information architecture.</p></div>
+        </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">5</span>
+          <div><strong>Onboarding &amp; in-app guidance</strong><p>First-time users currently have no guidance beyond the disclosure screen. Add lightweight onboarding that explains the core loop (track → graph → plan) without being intrusive. Options to explore: a short walkthrough on first launch (skippable), contextual empty-state hints (e.g. "Tap + to start tracking your first substance"), tooltip overlays on key UI elements, and a persistent <strong>How it works</strong> page accessible from Settings. The goal is to make the superposition model and plan/graph features discoverable without requiring users to read external documentation.</p></div>
+        </li>
+        <li class="roadmap-item" style="border-left:3px solid var(--teal); display:flex; gap:14px; align-items:flex-start;">
+          <span style="color:var(--teal); font-weight:800; flex-shrink:0;">6</span>
           <div><strong>UI polish</strong><p>Improve overall visual appeal — typography, spacing, color usage, card design, and transitions. Goal is a polished, trustworthy feel appropriate for a safety-focused tool.</p></div>
         </li>
       </ol>
@@ -1088,11 +1150,15 @@ interface PlanMarker {
           <strong>Drag-to-reorder types</strong>
           <p>Allow users to reorder stopwatch types within each section (Custom, Built-in, Substances) via drag handles. Order is persisted across sessions. Currently disabled pending a reliable cross-session implementation.</p>
         </div>
+        <div class="roadmap-item">
+          <strong>Addiction support resources</strong>
+          <p>A dedicated screen listing addiction help lines, apps, and consultation services — searchable by country. Entries include phone numbers (tap to dial), links to apps (e.g. SMART Recovery, Workit), and links to professional consultation services. Sourced from established harm reduction organisations (DanceSafe, The Loop, local health authorities). Presented as a non-judgmental, always-accessible resource — not gated behind any usage pattern.</p>
+        </div>
       </div>
     </section>
 
     <footer>
-      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.5 &nbsp;·&nbsp; June 2026
+      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.7 &nbsp;·&nbsp; July 2026
     </footer>
 
   </main>

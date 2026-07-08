@@ -29,7 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Live Graph',
+          title: 'Live',
           tabBarIcon: ({ color }) => (
             <IconSymbol size={26} name="waveform.path.ecg" color={color} />
           ),
@@ -45,11 +45,11 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="types"
+        name="interactions"
         options={{
-          title: 'Types',
+          title: 'Combos',
           tabBarIcon: ({ color }) => (
-            <IconSymbol size={26} name="slider.horizontal.3" color={color} />
+            <IconSymbol size={26} name="exclamationmark.triangle.fill" color={color} />
           ),
         }}
       />

@@ -38,6 +38,12 @@ interface Props {
   isDark: boolean;
   onSave: (entryId: string, newTargetTime: number) => void;
   onClose: () => void;
+  /**
+   * When false, renders as an absoluteFill overlay instead of a native Modal.
+   * Use this when already inside a Modal to avoid iOS's two-modal limitation.
+   * Defaults to true.
+   */
+  modal?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -52,6 +58,7 @@ export function EditPlanEntryModal({
   isDark,
   onSave,
   onClose,
+  modal = true,
 }: Props) {
   const [mode, setMode] = useState<EditMode>('start');
   const clockRef = useRef<ClockPickerHandle>(null);
@@ -125,13 +132,8 @@ export function EditPlanEntryModal({
     { key: 'comedown', label: 'Comedown'  },
   ];
 
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="slide"
-      onRequestClose={onClose}
-    >
+  const sheetContent = (
+    <>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -223,6 +225,26 @@ export function EditPlanEntryModal({
         </View>
       </View>
       </KeyboardAvoidingView>
+    </>
+  );
+
+  if (!modal) {
+    if (!visible) return null;
+    return (
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {sheetContent}
+      </View>
+    );
+  }
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      {sheetContent}
     </Modal>
   );
 }

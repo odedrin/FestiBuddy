@@ -1,7 +1,16 @@
+/**
+ * TypesSection
+ *
+ * Full type management UI — list, add/edit, favorite, hide, delete. This is
+ * the former standalone Types tab's content, extracted so it can be embedded
+ * inline inside the collapsible "Types" block on the Settings screen.
+ *
+ * Has no SafeAreaView / ScrollView / title of its own — the parent screen
+ * owns scrolling and the section header (see app/(tabs)/settings.tsx).
+ */
+
 import React, { useMemo, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useStopwatch } from '@/store/StopwatchContext';
 import { TypeCard } from '@/components/TypeCard';
 import { TypeEditorModal } from '@/components/TypeEditorModal';
@@ -15,9 +24,11 @@ import {
 } from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
 
-export default function TypesScreen() {
-  const colorScheme = useColorScheme() ?? 'light';
-  const isDark = colorScheme === 'dark';
+interface Props {
+  isDark: boolean;
+}
+
+export function TypesSection({ isDark }: Props) {
   const {
     state,
     addType,
@@ -35,10 +46,9 @@ export default function TypesScreen() {
   const [editTarget, setEditTarget]       = useState<StopwatchType | null>(null);
   const [hiddenExpanded, setHiddenExpanded] = useState(false);
 
-  const bgColor   = isDark ? '#000' : '#F2F2F7';
-  const subColor  = isDark ? '#9BA1A6' : '#687076';
-  const cardBg    = isDark ? '#1E2022' : '#F5F5F7';
-  const borderColor = isDark ? '#2A2D2F' : '#E5E5EA';
+  const subColor    = isDark ? '#9BA1A6' : '#687076';
+  const cardBg       = isDark ? '#1E2022' : '#F5F5F7';
+  const borderColor  = isDark ? '#2A2D2F' : '#E5E5EA';
 
   function openEditor(type: StopwatchType) {
     setEditTarget(type);
@@ -107,71 +117,63 @@ export default function TypesScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
-      <ScrollView
-        contentContainerStyle={styles.list}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: subColor }]}>TYPES</Text>
+    <View style={styles.root}>
+      {customTypes.length > 0 && (
+        <>
+          <Text style={[styles.sectionLabel, { color: subColor }]}>Custom</Text>
+          {customTypes.map(renderCard)}
+        </>
+      )}
+
+      {builtInTypes.length > 0 && (
+        <>
+          <Text style={[styles.sectionLabel, { color: subColor }]}>Built-in</Text>
+          {builtInTypes.map(renderCard)}
+        </>
+      )}
+
+      {substanceTypes.length > 0 && (
+        <>
+          <Text style={[styles.sectionLabel, { color: subColor }]}>Substances</Text>
+          {substanceTypes.map(renderCard)}
+        </>
+      )}
+
+      {/* Collapsible Hidden section (nested disclosure, unrelated to the
+          sticky Types toggle in Settings — same pattern as before) */}
+      {hiddenTypes.length > 0 && (
+        <View style={styles.hiddenSection}>
+          <TouchableOpacity
+            style={[styles.hiddenHeader, { backgroundColor: cardBg, borderColor }]}
+            onPress={() => setHiddenExpanded(e => !e)}
+            activeOpacity={0.7}
+          >
+            <Text style={[styles.hiddenHeaderText, { color: subColor }]}>
+              Hidden ({hiddenTypes.length})
+            </Text>
+            <Text style={[styles.hiddenChevron, { color: subColor }]}>
+              {hiddenExpanded ? '▲' : '▼'}
+            </Text>
+          </TouchableOpacity>
+
+          {hiddenExpanded && hiddenTypes.map(item => (
+            <TypeCard
+              key={item.id}
+              type={item}
+              isDark={isDark}
+              isFavorite={(state.favoriteTypeIds ?? []).includes(item.id)}
+              activeCount={state.activeStopwatches.filter(sw => sw.typeId === item.id).length}
+              onStart={handleStart}
+              onEdit={openEditor}
+              onDelete={handleDelete}
+              onToggleFavorite={toggleFavorite}
+              onHide={() => unhideType(item.id)}
+              hideLabel="Unhide"
+              warningStatus={warningMap.get(item.id)}
+            />
+          ))}
         </View>
-
-        {customTypes.length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { color: subColor }]}>Custom</Text>
-            {customTypes.map(renderCard)}
-          </>
-        )}
-
-        {builtInTypes.length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { color: subColor }]}>Built-in</Text>
-            {builtInTypes.map(renderCard)}
-          </>
-        )}
-
-        {substanceTypes.length > 0 && (
-          <>
-            <Text style={[styles.sectionLabel, { color: subColor }]}>Substances</Text>
-            {substanceTypes.map(renderCard)}
-          </>
-        )}
-
-        {/* Collapsible Hidden section */}
-        {hiddenTypes.length > 0 && (
-          <View style={styles.hiddenSection}>
-            <TouchableOpacity
-              style={[styles.hiddenHeader, { backgroundColor: cardBg, borderColor }]}
-              onPress={() => setHiddenExpanded(e => !e)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.hiddenHeaderText, { color: subColor }]}>
-                Hidden ({hiddenTypes.length})
-              </Text>
-              <Text style={[styles.hiddenChevron, { color: subColor }]}>
-                {hiddenExpanded ? '▲' : '▼'}
-              </Text>
-            </TouchableOpacity>
-
-            {hiddenExpanded && hiddenTypes.map(item => (
-              <TypeCard
-                key={item.id}
-                type={item}
-                isDark={isDark}
-                isFavorite={(state.favoriteTypeIds ?? []).includes(item.id)}
-                activeCount={state.activeStopwatches.filter(sw => sw.typeId === item.id).length}
-                onStart={handleStart}
-                onEdit={openEditor}
-                onDelete={handleDelete}
-                onToggleFavorite={toggleFavorite}
-                onHide={() => unhideType(item.id)}
-                hideLabel="Unhide"
-                warningStatus={warningMap.get(item.id)}
-              />
-            ))}
-          </View>
-        )}
-      </ScrollView>
+      )}
 
       <TypeEditorModal
         visible={editorVisible}
@@ -190,21 +192,14 @@ export default function TypesScreen() {
         onConfirm={onConfirm}
         onCancel={onCancel}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 4,
-  },
-  title: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 1.2,
+  root: {
+    paddingTop: 4,
+    paddingBottom: 12,
   },
   sectionLabel: {
     fontSize: 11,
@@ -215,9 +210,6 @@ const styles = StyleSheet.create({
     paddingTop: 14,
     paddingBottom: 6,
     opacity: 0.6,
-  },
-  list: {
-    paddingBottom: 40,
   },
   hiddenSection: {
     marginTop: 20,

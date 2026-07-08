@@ -69,6 +69,7 @@ type Action =
   | { type: 'ADD_PLAN_ENTRY'; payload: { planId: string; entry: PlannedEntry } }
   | { type: 'REMOVE_PLAN_ENTRY'; payload: { planId: string; entryId: string } }
   | { type: 'UPDATE_PLAN_ENTRY'; payload: { planId: string; entry: PlannedEntry } }
+  | { type: 'SAVE_PLAN_EDITS'; payload: { planId: string; name: string; entries: PlannedEntry[] } }
   | { type: 'TOGGLE_INTERACTION_WARNINGS' }
   | { type: 'TOGGLE_INTERACTION_BADGES' }
   | { type: 'SET_PLAN_OVERLAY_MODE'; payload: 'markers' | 'curves' }
@@ -282,6 +283,16 @@ function reducer(rawState: AppState, action: Action): AppState {
         ),
       };
 
+    case 'SAVE_PLAN_EDITS':
+      return {
+        ...state,
+        plans: state.plans.map(p =>
+          p.id === action.payload.planId
+            ? { ...p, name: action.payload.name, entries: action.payload.entries }
+            : p,
+        ),
+      };
+
     case 'REORDER_TYPES': {
       const newOrder = action.payload; // IDs in desired order (one section at a time)
       const reorderSet = new Set(newOrder);
@@ -347,11 +358,15 @@ export interface StopwatchContextValue {
   setPlanOverlayMode: (mode: 'markers' | 'curves') => void;
   // Plans
   addPlan: (name: string) => void;
+  /** Creates a plan with an initial batch of entries (each with its own target time) in a single update. Returns the new plan's id. */
+  createPlanWithEntries: (name: string, entries: { typeId: string; targetTime: number }[]) => string;
   renamePlan: (id: string, name: string) => void;
   deletePlan: (id: string) => void;
   addPlanEntry: (planId: string, typeId: string, targetTime: number) => void;
   removePlanEntry: (planId: string, entryId: string) => void;
   updatePlanEntry: (planId: string, entry: PlannedEntry) => void;
+  /** Atomically renames a plan and replaces its entire entries array — used by the Edit Plan modal's Save action. */
+  savePlanEdits: (planId: string, name: string, entries: PlannedEntry[]) => void;
 }
 
 const StopwatchContext = createContext<StopwatchContextValue | null>(null);
@@ -523,6 +538,20 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'ADD_PLAN', payload: { id: genId(), name, entries: [] } });
   }, []);
 
+  const createPlanWithEntries = useCallback(
+    (name: string, entries: { typeId: string; targetTime: number }[]) => {
+      const planId = genId();
+      const planEntries: PlannedEntry[] = entries.map(e => ({
+        id: genId(),
+        typeId: e.typeId,
+        targetTime: e.targetTime,
+      }));
+      dispatch({ type: 'ADD_PLAN', payload: { id: planId, name, entries: planEntries } });
+      return planId;
+    },
+    [],
+  );
+
   const renamePlan = useCallback((id: string, name: string) => {
     dispatch({ type: 'RENAME_PLAN', payload: { id, name } });
   }, []);
@@ -546,6 +575,10 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'UPDATE_PLAN_ENTRY', payload: { planId, entry } });
   }, []);
 
+  const savePlanEdits = useCallback((planId: string, name: string, entries: PlannedEntry[]) => {
+    dispatch({ type: 'SAVE_PLAN_EDITS', payload: { planId, name, entries } });
+  }, []);
+
   if (!hydrated) return null;
 
   return (
@@ -554,8 +587,8 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
       startStopwatch, stopStopwatch, pauseStopwatch, resumeStopwatch, updateStopwatchStartTime,
       addType, updateType, deleteType, getTypeById, evaluateSum,
       toggleFavorite, reorderTypes, hideType, unhideType, toggleInteractionWarnings, toggleInteractionBadges, setPlanOverlayMode,
-      addPlan, renamePlan, deletePlan,
-      addPlanEntry, removePlanEntry, updatePlanEntry,
+      addPlan, createPlanWithEntries, renamePlan, deletePlan,
+      addPlanEntry, removePlanEntry, updatePlanEntry, savePlanEdits,
     }}>
       {children}
     </StopwatchContext.Provider>

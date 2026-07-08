@@ -23,6 +23,7 @@ const MAPPING = {
   'calendar': 'calendar-today',
   'slider.horizontal.3': 'tune',
   'gearshape.fill': 'settings',
+  'exclamationmark.triangle.fill': 'warning',
 } as IconMapping;
 
 /**

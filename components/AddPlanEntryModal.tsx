@@ -49,6 +49,12 @@ interface Props {
   now: number;
   /** Substance type IDs already in the plan — used to show interaction badges */
   existingSubstanceIds?: string[];
+  /**
+   * When false, renders as an absoluteFill overlay instead of a native Modal.
+   * Use this when already inside a Modal to avoid iOS's two-modal limitation.
+   * Defaults to true.
+   */
+  modal?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -99,7 +105,7 @@ function TypeRow({
 // Modal
 // ---------------------------------------------------------------------------
 
-export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existingSubstanceIds = [] }: Props) {
+export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existingSubstanceIds = [], modal = true }: Props) {
   const { state } = useStopwatch();
 
   const warningMap = useMemo(() => {
@@ -124,6 +130,13 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existi
   const clockRef = useRef<ClockPickerHandle>(null);
   const [selectedTypeId, setSelectedTypeId] = useState<string | null>(null);
   const [mode, setMode] = useState<EditMode>('start');
+
+  // Tracks whether the type list has more content below the fold, so we can
+  // show a fading hint instead of leaving the cutoff ambiguous.
+  const [listLayoutH, setListLayoutH] = useState(0);
+  const [listContentH, setListContentH] = useState(0);
+  const [listScrollY, setListScrollY] = useState(0);
+  const canScrollMore = listContentH - listLayoutH - listScrollY > 4;
 
   const initDate = new Date(now);
   const [hour,      setHour]      = useState(initDate.getHours());
@@ -220,8 +233,8 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existi
     { key: 'comedown', label: 'Comedown'  },
   ];
 
-  return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+  const sheetContent = (
+    <>
       <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={handleClose} />
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
@@ -230,31 +243,45 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existi
         <Text style={[styles.title, { color: textColor }]}>Add to Plan</Text>
 
         {/* Type list */}
-        <SectionList
-          sections={sections}
-          keyExtractor={item => item.id}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}
-          stickySectionHeadersEnabled={false}
-          style={styles.list}
-          renderSectionHeader={({ section }) =>
-            section.title ? (
-              <Text style={[styles.sectionHeader, { color: subColor }]}>{section.title}</Text>
-            ) : null
-          }
-          renderItem={({ item }) => (
-            <TypeRow
-              item={item}
-              selected={item.id === selectedTypeId}
-              isDark={isDark}
-              onSelect={t => {
-                setSelectedTypeId(t.id);
-                setCdValue(t.peakValue * 0.25);
-              }}
-              warningStatus={warningMap.get(item.id)}
-            />
+        <View style={styles.listWrap}>
+          <SectionList
+            sections={sections}
+            keyExtractor={item => item.id}
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={styles.listContent}
+            stickySectionHeadersEnabled={false}
+            style={styles.list}
+            onLayout={e => setListLayoutH(e.nativeEvent.layout.height)}
+            onContentSizeChange={(_w, h) => setListContentH(h)}
+            onScroll={e => setListScrollY(e.nativeEvent.contentOffset.y)}
+            scrollEventThrottle={16}
+            renderSectionHeader={({ section }) =>
+              section.title ? (
+                <Text style={[styles.sectionHeader, { color: subColor }]}>{section.title}</Text>
+              ) : null
+            }
+            renderItem={({ item }) => (
+              <TypeRow
+                item={item}
+                selected={item.id === selectedTypeId}
+                isDark={isDark}
+                onSelect={t => {
+                  setSelectedTypeId(t.id);
+                  setCdValue(t.peakValue * 0.25);
+                }}
+                warningStatus={warningMap.get(item.id)}
+              />
+            )}
+          />
+          {canScrollMore && (
+            <View pointerEvents="none" style={styles.fadeWrap}>
+              <View style={[styles.fadeBand, { backgroundColor: bgColor, opacity: 0.12 }]} />
+              <View style={[styles.fadeBand, { backgroundColor: bgColor, opacity: 0.32 }]} />
+              <View style={[styles.fadeBand, { backgroundColor: bgColor, opacity: 0.6 }]} />
+              <View style={[styles.fadeBand, { backgroundColor: bgColor, opacity: 0.9 }]} />
+            </View>
           )}
-        />
+        </View>
 
         {/* Footer: mode picker + time picker + Add button */}
         <View style={[styles.footer, { borderTopColor: divider }]}>
@@ -328,6 +355,21 @@ export function AddPlanEntryModal({ visible, onClose, onAdd, isDark, now, existi
         </View>
       </View>
       </KeyboardAvoidingView>
+    </>
+  );
+
+  if (!modal) {
+    if (!visible) return null;
+    return (
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        {sheetContent}
+      </View>
+    );
+  }
+
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+      {sheetContent}
     </Modal>
   );
 }
@@ -341,9 +383,12 @@ const styles = StyleSheet.create({
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingTop: 12, paddingHorizontal: 16, maxHeight: '90%' },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
   title: { fontSize: 17, fontWeight: '600', textAlign: 'center', marginBottom: 12 },
-  list: { flexShrink: 1, maxHeight: 200 },
+  listWrap: { flexShrink: 1, maxHeight: 260, position: 'relative' },
+  list: { flexShrink: 1 },
   listContent: { paddingBottom: 8 },
   sectionHeader: { fontSize: 11, fontWeight: '600', letterSpacing: 0.6, textTransform: 'uppercase', marginTop: 8, marginBottom: 6, paddingHorizontal: 2 },
+  fadeWrap: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 28 },
+  fadeBand: { flex: 1 },
   row: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, borderWidth: StyleSheet.hairlineWidth, paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8, gap: 10 },
   dot: { width: 10, height: 10, borderRadius: 5 },
   rowInfo: { flex: 1 },

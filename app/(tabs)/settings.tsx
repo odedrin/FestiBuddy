@@ -15,6 +15,7 @@ import { useColorSchemePreference } from '@/store/ColorSchemeContext';
 import type { ColorSchemePreference } from '@/store/ColorSchemeContext';
 import { useStopwatch } from '@/store/StopwatchContext';
 import { DisclosureModal } from '@/components/DisclosureModal';
+import { TypesSection } from '@/components/TypesSection';
 
 const SCHEME_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
   { label: 'System', value: 'system' },
@@ -28,6 +29,7 @@ export default function SettingsScreen() {
   const { state, toggleInteractionWarnings, toggleInteractionBadges, setPlanOverlayMode } = useStopwatch();
   const { colorSchemePreference, setColorScheme } = useColorSchemePreference();
   const [disclosureVisible, setDisclosureVisible] = useState(false);
+  const [typesExpanded, setTypesExpanded] = useState(false);
 
   const bgColor   = isDark ? '#000' : '#F2F2F7';
   const cardBg    = isDark ? '#1E2022' : '#fff';
@@ -35,175 +37,239 @@ export default function SettingsScreen() {
   const subColor  = isDark ? '#9BA1A6' : '#687076';
   const sepColor  = isDark ? '#2A2D2F' : '#E5E5EA';
 
+  const visibleTypeCount = state.types.filter(t => !t.hidden).length;
+
+  // ── Scroll content is built as an array so the sticky index for the
+  // Types toggle is computed from its position, not hardcoded — it can't
+  // go stale if a block above it is reordered or removed later.
+  const blocks: React.ReactNode[] = [];
+
+  blocks.push(
+    <View key="header" style={styles.header}>
+      <Text style={[styles.screenTitle, { color: subColor }]}>SETTINGS</Text>
+    </View>,
+  );
+
+  // Appearance
+  blocks.push(
+    <View key="appearance">
+      <Text style={[styles.groupLabel, { color: subColor }]}>Appearance</Text>
+      <View style={[styles.card, { backgroundColor: cardBg }]}>
+        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>Color Scheme</Text>
+            <Text style={[styles.rowSub, { color: subColor }]}>
+              Override the system appearance or follow it automatically.
+            </Text>
+          </View>
+        </View>
+        <View style={[
+          styles.segmentRow,
+          { backgroundColor: isDark ? '#2c2c2e' : '#e5e5ea' },
+        ]}>
+          {SCHEME_OPTIONS.map(opt => {
+            const active = colorSchemePreference === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.segment,
+                  active && { backgroundColor: isDark ? '#48484a' : '#fff' },
+                  active && styles.segmentActive,
+                ]}
+                onPress={() => setColorScheme(opt.value)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.segmentText,
+                  { color: active ? (isDark ? '#ECEDEE' : '#11181C') : subColor },
+                  active && styles.segmentTextActive,
+                ]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </View>,
+  );
+
+  // Harm Reduction
+  blocks.push(
+    <View key="harm-reduction">
+      <Text style={[styles.groupLabel, { color: subColor }]}>Harm Reduction</Text>
+      <View style={[styles.card, { backgroundColor: cardBg }]}>
+        <View style={[styles.row, { borderBottomColor: sepColor }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>Interaction Badges</Text>
+            <Text style={[styles.rowSub, { color: subColor }]}>
+              Show ⚠ badges in the type list when adding a substance that interacts with an active one.
+            </Text>
+          </View>
+          <Switch
+            value={state.showInteractionBadges}
+            onValueChange={toggleInteractionBadges}
+            trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
+            thumbColor="#fff"
+          />
+        </View>
+        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>Warning Popups</Text>
+            <Text style={[styles.rowSub, { color: subColor }]}>
+              Show a confirmation dialog when starting a substance that has known interactions with active ones.
+            </Text>
+          </View>
+          <Switch
+            value={state.showInteractionWarnings}
+            onValueChange={toggleInteractionWarnings}
+            trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
+            thumbColor="#fff"
+          />
+        </View>
+      </View>
+    </View>,
+  );
+
+  // Types — sticky toggle. The index is captured immediately after pushing
+  // this block, so stickyHeaderIndices always points at the right element.
+  blocks.push(
+    <View key="types-toggle" style={[styles.typesToggleWrap, { backgroundColor: bgColor }]}>
+      <Text style={[styles.groupLabel, { color: subColor, marginBottom: 6 }]}>Substances Library</Text>
+      <TouchableOpacity
+        style={[styles.typesToggleCard, { backgroundColor: cardBg }]}
+        onPress={() => setTypesExpanded(e => !e)}
+        activeOpacity={0.7}
+      >
+        <View style={styles.rowText}>
+          <Text style={[styles.rowTitle, { color: textColor }]}>Manage</Text>
+          <Text style={[styles.rowSub, { color: subColor }]}>
+            {visibleTypeCount} type{visibleTypeCount !== 1 ? 's' : ''} configured
+          </Text>
+        </View>
+        <Text style={[styles.typesChevron, { color: subColor }]}>
+          {typesExpanded ? '▲' : '▼'}
+        </Text>
+      </TouchableOpacity>
+    </View>,
+  );
+  const typesStickyIndex = blocks.length - 1;
+
+  if (typesExpanded) {
+    blocks.push(
+      <View key="types-body">
+        <TypesSection isDark={isDark} />
+      </View>,
+    );
+  }
+
+  // Graph
+  blocks.push(
+    <View key="graph">
+      <Text style={[styles.groupLabel, { color: subColor }]}>Graph</Text>
+      <View style={[styles.card, { backgroundColor: cardBg }]}>
+        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>Plan overlay</Text>
+            <Text style={[styles.rowSub, { color: subColor }]}>
+              How toggled plans appear on the live graph.
+            </Text>
+          </View>
+        </View>
+        <View style={[
+          styles.segmentRow,
+          { backgroundColor: isDark ? '#2c2c2e' : '#e5e5ea' },
+        ]}>
+          {([
+            { label: 'Start time', value: 'markers' },
+            { label: 'Full curve',  value: 'curves'  },
+          ] as const).map(opt => {
+            const active = state.planOverlayMode === opt.value;
+            return (
+              <TouchableOpacity
+                key={opt.value}
+                style={[
+                  styles.segment,
+                  active && { backgroundColor: isDark ? '#48484a' : '#fff' },
+                  active && styles.segmentActive,
+                ]}
+                onPress={() => setPlanOverlayMode(opt.value)}
+                activeOpacity={0.7}
+              >
+                <Text style={[
+                  styles.segmentText,
+                  { color: active ? (isDark ? '#ECEDEE' : '#11181C') : subColor },
+                  active && styles.segmentTextActive,
+                ]}>
+                  {opt.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
+    </View>,
+  );
+
+  // About
+  blocks.push(
+    <View key="about">
+      <Text style={[styles.groupLabel, { color: subColor }]}>About</Text>
+      <View style={[styles.card, { backgroundColor: cardBg }]}>
+        <TouchableOpacity
+          style={styles.infoRow}
+          onPress={() => Linking.openURL('https://psychonautwiki.org')}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.infoLabel, { color: subColor }]}>PK data source</Text>
+          <Text style={[styles.infoValue, { color: textColor }]}>PsychonautWiki ↗</Text>
+        </TouchableOpacity>
+        <View style={[styles.sep, { backgroundColor: sepColor }]} />
+        <TouchableOpacity
+          style={styles.infoRow}
+          onPress={() => Linking.openURL('https://tripsit.me')}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.infoLabel, { color: subColor }]}>Interaction data</Text>
+          <Text style={[styles.infoValue, { color: textColor }]}>TripSit combos ↗</Text>
+        </TouchableOpacity>
+        <View style={[styles.sep, { backgroundColor: sepColor }]} />
+        <View style={styles.infoRow}>
+          <Text style={[styles.infoLabel, { color: subColor }]}>Substances</Text>
+          <Text style={[styles.infoValue, { color: textColor }]}>16 bundled</Text>
+        </View>
+        <View style={[styles.sep, { backgroundColor: sepColor }]} />
+        <TouchableOpacity
+          style={styles.infoRow}
+          onPress={() => setDisclosureVisible(true)}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.infoLabel, { color: subColor }]}>Privacy & disclosure</Text>
+          <Text style={[styles.infoValue, { color: textColor }]}>View ↗</Text>
+        </TouchableOpacity>
+      </View>
+    </View>,
+  );
+
+  // Disclaimer
+  blocks.push(
+    <Text key="disclaimer" style={[styles.disclaimer, { color: subColor }]}>
+      FestiBud provides pharmacokinetic reference data for harm reduction purposes only.
+      Duration estimates are population midpoints. Individual responses vary significantly
+      with dose, bodyweight, tolerance, and co-administration. Always consult a medical
+      professional if in doubt.
+    </Text>,
+  );
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-
-        <View style={styles.header}>
-          <Text style={[styles.screenTitle, { color: subColor }]}>SETTINGS</Text>
-        </View>
-
-        {/* Appearance */}
-        <Text style={[styles.groupLabel, { color: subColor }]}>Appearance</Text>
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          <View style={[styles.row, { borderBottomWidth: 0 }]}>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: textColor }]}>Color Scheme</Text>
-              <Text style={[styles.rowSub, { color: subColor }]}>
-                Override the system appearance or follow it automatically.
-              </Text>
-            </View>
-          </View>
-          <View style={[
-            styles.segmentRow,
-            { backgroundColor: isDark ? '#2c2c2e' : '#e5e5ea' },
-          ]}>
-            {SCHEME_OPTIONS.map(opt => {
-              const active = colorSchemePreference === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.segment,
-                    active && { backgroundColor: isDark ? '#48484a' : '#fff' },
-                    active && styles.segmentActive,
-                  ]}
-                  onPress={() => setColorScheme(opt.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.segmentText,
-                    { color: active ? (isDark ? '#ECEDEE' : '#11181C') : subColor },
-                    active && styles.segmentTextActive,
-                  ]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* Harm Reduction */}
-        <Text style={[styles.groupLabel, { color: subColor }]}>Harm Reduction</Text>
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          <View style={[styles.row, { borderBottomColor: sepColor }]}>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: textColor }]}>Interaction Badges</Text>
-              <Text style={[styles.rowSub, { color: subColor }]}>
-                Show ⚠ badges in the type list when adding a substance that interacts with an active one.
-              </Text>
-            </View>
-            <Switch
-              value={state.showInteractionBadges}
-              onValueChange={toggleInteractionBadges}
-              trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
-              thumbColor="#fff"
-            />
-          </View>
-          <View style={[styles.row, { borderBottomWidth: 0 }]}>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: textColor }]}>Warning Popups</Text>
-              <Text style={[styles.rowSub, { color: subColor }]}>
-                Show a confirmation dialog when starting a substance that has known interactions with active ones.
-              </Text>
-            </View>
-            <Switch
-              value={state.showInteractionWarnings}
-              onValueChange={toggleInteractionWarnings}
-              trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
-              thumbColor="#fff"
-            />
-          </View>
-        </View>
-
-        {/* Graph */}
-        <Text style={[styles.groupLabel, { color: subColor }]}>Graph</Text>
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          <View style={[styles.row, { borderBottomWidth: 0 }]}>
-            <View style={styles.rowText}>
-              <Text style={[styles.rowTitle, { color: textColor }]}>Plan overlay</Text>
-              <Text style={[styles.rowSub, { color: subColor }]}>
-                How toggled plans appear on the live graph.
-              </Text>
-            </View>
-          </View>
-          <View style={[
-            styles.segmentRow,
-            { backgroundColor: isDark ? '#2c2c2e' : '#e5e5ea' },
-          ]}>
-            {([
-              { label: 'Start time', value: 'markers' },
-              { label: 'Full curve',  value: 'curves'  },
-            ] as const).map(opt => {
-              const active = state.planOverlayMode === opt.value;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  style={[
-                    styles.segment,
-                    active && { backgroundColor: isDark ? '#48484a' : '#fff' },
-                    active && styles.segmentActive,
-                  ]}
-                  onPress={() => setPlanOverlayMode(opt.value)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.segmentText,
-                    { color: active ? (isDark ? '#ECEDEE' : '#11181C') : subColor },
-                    active && styles.segmentTextActive,
-                  ]}>
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        </View>
-
-        {/* About data sources */}
-        <Text style={[styles.groupLabel, { color: subColor }]}>About</Text>
-        <View style={[styles.card, { backgroundColor: cardBg }]}>
-          <TouchableOpacity
-            style={styles.infoRow}
-            onPress={() => Linking.openURL('https://psychonautwiki.org')}
-            activeOpacity={0.6}
-          >
-            <Text style={[styles.infoLabel, { color: subColor }]}>PK data source</Text>
-            <Text style={[styles.infoValue, { color: textColor }]}>PsychonautWiki ↗</Text>
-          </TouchableOpacity>
-          <View style={[styles.sep, { backgroundColor: sepColor }]} />
-          <TouchableOpacity
-            style={styles.infoRow}
-            onPress={() => Linking.openURL('https://tripsit.me')}
-            activeOpacity={0.6}
-          >
-            <Text style={[styles.infoLabel, { color: subColor }]}>Interaction data</Text>
-            <Text style={[styles.infoValue, { color: textColor }]}>TripSit combos ↗</Text>
-          </TouchableOpacity>
-          <View style={[styles.sep, { backgroundColor: sepColor }]} />
-          <View style={styles.infoRow}>
-            <Text style={[styles.infoLabel, { color: subColor }]}>Substances</Text>
-            <Text style={[styles.infoValue, { color: textColor }]}>16 bundled</Text>
-          </View>
-          <View style={[styles.sep, { backgroundColor: sepColor }]} />
-          <TouchableOpacity
-            style={styles.infoRow}
-            onPress={() => setDisclosureVisible(true)}
-            activeOpacity={0.6}
-          >
-            <Text style={[styles.infoLabel, { color: subColor }]}>Privacy & disclosure</Text>
-            <Text style={[styles.infoValue, { color: textColor }]}>View ↗</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={[styles.disclaimer, { color: subColor }]}>
-          FestiBud provides pharmacokinetic reference data for harm reduction purposes only.
-          Duration estimates are population midpoints. Individual responses vary significantly
-          with dose, bodyweight, tolerance, and co-administration. Always consult a medical
-          professional if in doubt.
-        </Text>
-
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        stickyHeaderIndices={[typesStickyIndex]}
+      >
+        {blocks}
       </ScrollView>
 
       <DisclosureModal
@@ -298,6 +364,24 @@ const styles = StyleSheet.create({
   },
   segmentTextActive: {
     fontWeight: '600',
+  },
+
+  // Types sticky toggle
+  typesToggleWrap: {
+    paddingBottom: 2,
+  },
+  typesToggleCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: 16,
+    borderRadius: 12,
+    padding: 16,
+    gap: 12,
+  },
+  typesChevron: {
+    fontSize: 12,
+    opacity: 0.6,
   },
 
   disclaimer: {
