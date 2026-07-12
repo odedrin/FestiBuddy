@@ -8,6 +8,7 @@
  * and a dismiss button.
  */
 
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import React, { useState } from 'react';
 import {
   Modal,
@@ -17,7 +18,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface Props {
   visible: boolean;
@@ -82,7 +82,7 @@ export function DisclosureModal({ visible, isFirstLaunch = false, onDismiss, onR
             <Text style={styles.cardIcon}>⚠️</Text>
             <Text style={[styles.cardTitle, { color: textColor }]}>For harm reduction reference only</Text>
             <Text style={[styles.cardBody, { color: subColor }]}>
-              Pharmacokinetic curves and duration estimates are population midpoints sourced from
+              Duration estimates and effect curves are population midpoints sourced from
               PsychonautWiki and TripSit. Individual responses vary significantly with dose,
               bodyweight, tolerance, metabolism, and route of administration.{'\n\n'}
               DoseAngel is <Text style={[styles.bold, { color: textColor }]}>not medical advice</Text>.
@@ -98,7 +98,20 @@ export function DisclosureModal({ visible, isFirstLaunch = false, onDismiss, onR
             <Text style={[styles.cardBody, { color: subColor }]}>
               Known drug–drug interactions are sourced from TripSit's combo data. Warnings flag
               combinations that carry documented risks, but the absence of a warning does not
-              mean a combination is safe. Interaction data can be toggled off in Settings.
+              mean a combination is safe.
+            </Text>
+          </View>
+
+          {/* Card: Know the risks */}
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+            <Text style={styles.cardIcon}>⚖️</Text>
+            <Text style={[styles.cardTitle, { color: textColor }]}>Know the risks</Text>
+            <Text style={[styles.cardBody, { color: subColor }]}>
+              Many of the substances covered in this app are illegal in many countries, and all of
+              them carry a risk of addiction. If you choose to use any of them, you do so at your
+              own risk.{'\n\n'}
+              If you're concerned about your own or someone else's substance use, please reach out
+              to a medical professional or a local addiction support service.
             </Text>
           </View>
 
@@ -192,13 +205,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
   },
   cardTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
-    lineHeight: 20,
+    lineHeight: 21,
   },
   cardBody: {
-    fontSize: 13,
-    lineHeight: 19,
+    fontSize: 15,
+    lineHeight: 21,
   },
   bold: {
     fontWeight: '700',

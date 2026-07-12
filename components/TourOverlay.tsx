@@ -384,12 +384,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   title: {
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
   },
   body: {
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: 15,
+    lineHeight: 21,
   },
   buttonRow: {
     flexDirection: 'row',

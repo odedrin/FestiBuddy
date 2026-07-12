@@ -337,8 +337,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   rowText: { flex: 1 },
-  rowTitle: { fontSize: 15, fontWeight: '500', marginBottom: 3 },
-  rowSub: { fontSize: 12, lineHeight: 17 },
+  rowTitle: { fontSize: 16, fontWeight: '500', marginBottom: 3 },
+  rowSub: { fontSize: 13.5, lineHeight: 19 },
 
   infoRow: {
     flexDirection: 'row',
@@ -400,8 +400,8 @@ const styles = StyleSheet.create({
   },
 
   disclaimer: {
-    fontSize: 11,
-    lineHeight: 17,
+    fontSize: 15,
+    lineHeight: 21,
     marginHorizontal: 20,
     marginTop: 20,
     textAlign: 'center',
