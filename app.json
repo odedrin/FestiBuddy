@@ -1,16 +1,16 @@
 {
   "expo": {
-    "name": "FestiBud",
-    "slug": "FestiBud",
+    "name": "DoseAngel",
+    "slug": "DoseAngel",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "festibud",
+    "scheme": "doseangel",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.odedrin.FestiBud",
+      "supportsTablet": false,
+      "bundleIdentifier": "com.odedrin.DoseAngel",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -24,7 +24,7 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.odedrin.FestiBud"
+      "package": "com.odedrin.DoseAngel"
     },
     "web": {
       "output": "static",

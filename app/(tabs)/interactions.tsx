@@ -15,7 +15,7 @@
  * would defeat the point even if the user has turned them off elsewhere.
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Linking,
   ScrollView,
@@ -34,6 +34,7 @@ import {
   type InteractionStatus,
 } from '@/constants/interactions';
 import type { StopwatchType } from '@/types/models';
+import { useTourTarget } from '@/store/tourTargets';
 
 function severityLabel(status: InteractionStatus): string {
   switch (status) {
@@ -85,6 +86,20 @@ export default function CheckComboScreen() {
     params.prefill === 'active' ? activeSubstanceIds.slice(0, 2) : [],
   );
 
+  // Onboarding tour target — see store/TourContext.tsx for the step copy.
+  const headlineTourRef = useTourTarget('combos.headline');
+
+  // The result card lives in the same scroll flow as the grid (see
+  // components note above) so it can never cover an unscrolled chip, but
+  // that means picking the second substance can leave the explanation
+  // off-screen below the fold. Auto-scroll to reveal it the moment it
+  // appears, rather than making the user scroll to read their own result.
+  const scrollRef = useRef<ScrollView>(null);
+  const pendingScrollRef = useRef(false);
+  useEffect(() => {
+    if (selected.length === 2) pendingScrollRef.current = true;
+  }, [selected]);
+
   const bgColor    = isDark ? '#000' : '#F2F2F7';
   const cardBg     = isDark ? '#1E2022' : '#fff';
   const textColor  = isDark ? '#ECEDEE' : '#11181C';
@@ -126,7 +141,7 @@ export default function CheckComboScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: bgColor }]}>
       {/* ── Screen headline (matches Live / Plan) ── */}
-      <View style={styles.headline}>
+      <View ref={headlineTourRef} style={styles.headline}>
         <Text style={[styles.headlineTitle, { color: textColor }]}>Check a Combo</Text>
         <Text style={[styles.headlineSubtitle, { color: subColor }]}>
           Select two substances to see how they interact
@@ -135,6 +150,13 @@ export default function CheckComboScreen() {
 
       {/* ── Substance grid ── */}
       <ScrollView
+        ref={scrollRef}
+        onContentSizeChange={() => {
+          if (pendingScrollRef.current) {
+            pendingScrollRef.current = false;
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }
+        }}
         style={styles.gridScroll}
         contentContainerStyle={styles.gridContent}
         showsVerticalScrollIndicator={false}
@@ -184,53 +206,55 @@ export default function CheckComboScreen() {
             );
           })}
         </View>
-      </ScrollView>
 
-      {/* ── Explanation card — bottom of screen, only once 2 are picked ── */}
-      {pairInteraction !== undefined && (
-        <View style={[
-          styles.explainCard,
-          { backgroundColor: cardBg, borderLeftColor: INTERACTION_COLOR[pairInteraction.status] },
-        ]}>
-          <Text style={[
-            styles.explainBadge,
-            { color: INTERACTION_COLOR[pairInteraction.status], backgroundColor: INTERACTION_COLOR[pairInteraction.status] + '20' },
+        {/* ── Explanation card — follows the grid in the same scroll flow (not
+             pinned outside it) so it can never sit on top of an unscrolled
+             chip and block deselecting it. Only shown once 2 are picked. ── */}
+        {pairInteraction !== undefined && (
+          <View style={[
+            styles.explainCard,
+            { backgroundColor: cardBg, borderLeftColor: INTERACTION_COLOR[pairInteraction.status] },
           ]}>
-            {severityLabel(pairInteraction.status)}
-          </Text>
-          <View style={styles.explainNames}>
-            {selected.map((id, i) => (
-              <React.Fragment key={id}>
-                {i > 0 && <Text style={[styles.explainPlus, { color: subColor }]}>+</Text>}
-                <Text style={[styles.explainName, { color: textColor }]}>{getName(id)}</Text>
-                <TouchableOpacity
-                  hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
-                  onPress={() => Linking.openURL(psychonautWikiUrl(getName(id)))}
-                >
-                  <Text style={[styles.explainWiki, { color: subColor }]}>ⓘ</Text>
-                </TouchableOpacity>
-              </React.Fragment>
-            ))}
+            <Text style={[
+              styles.explainBadge,
+              { color: INTERACTION_COLOR[pairInteraction.status], backgroundColor: INTERACTION_COLOR[pairInteraction.status] + '20' },
+            ]}>
+              {severityLabel(pairInteraction.status)}
+            </Text>
+            <View style={styles.explainNames}>
+              {selected.map((id, i) => (
+                <React.Fragment key={id}>
+                  {i > 0 && <Text style={[styles.explainPlus, { color: subColor }]}>+</Text>}
+                  <Text style={[styles.explainName, { color: textColor }]}>{getName(id)}</Text>
+                  <TouchableOpacity
+                    hitSlop={{ top: 6, bottom: 6, left: 4, right: 4 }}
+                    onPress={() => Linking.openURL(psychonautWikiUrl(getName(id)))}
+                  >
+                    <Text style={[styles.explainWiki, { color: subColor }]}>ⓘ</Text>
+                  </TouchableOpacity>
+                </React.Fragment>
+              ))}
+            </View>
+            <Text style={[styles.explainNote, { color: subColor }]}>{pairInteraction.note}</Text>
           </View>
-          <Text style={[styles.explainNote, { color: subColor }]}>{pairInteraction.note}</Text>
-        </View>
-      )}
+        )}
 
-      {selected.length === 2 && pairInteraction === undefined && (
-        <View style={[styles.explainCard, { backgroundColor: cardBg, borderLeftColor: borderColor }]}>
-          <Text style={[styles.explainBadge, { color: subColor, backgroundColor: borderColor }]}>
-            No documented interaction
-          </Text>
-          <View style={styles.explainNames}>
-            <Text style={[styles.explainName, { color: textColor }]}>{getName(selected[0])}</Text>
-            <Text style={[styles.explainPlus, { color: subColor }]}>+</Text>
-            <Text style={[styles.explainName, { color: textColor }]}>{getName(selected[1])}</Text>
+        {selected.length === 2 && pairInteraction === undefined && (
+          <View style={[styles.explainCard, { backgroundColor: cardBg, borderLeftColor: borderColor }]}>
+            <Text style={[styles.explainBadge, { color: subColor, backgroundColor: borderColor }]}>
+              No documented interaction
+            </Text>
+            <View style={styles.explainNames}>
+              <Text style={[styles.explainName, { color: textColor }]}>{getName(selected[0])}</Text>
+              <Text style={[styles.explainPlus, { color: subColor }]}>+</Text>
+              <Text style={[styles.explainName, { color: textColor }]}>{getName(selected[1])}</Text>
+            </View>
+            <Text style={[styles.explainNote, { color: subColor }]}>
+              DoseAngel has no interaction data for this pair. This does not mean the combination is safe.
+            </Text>
           </View>
-          <Text style={[styles.explainNote, { color: subColor }]}>
-            FestiBud has no interaction data for this pair. This does not mean the combination is safe.
-          </Text>
-        </View>
-      )}
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -258,35 +282,37 @@ const styles = StyleSheet.create({
   gridContent: {
     paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 32,
   },
   hint: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    marginBottom: 10,
+    marginBottom: 12,
+    textAlign: 'center',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    justifyContent: 'center',
+    gap: 10,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 20,
     borderWidth: 1.5,
-    gap: 6,
+    gap: 8,
     position: 'relative',
   },
   chipDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   chipText: {
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '600',
   },
   chipBadge: {
@@ -307,8 +333,7 @@ const styles = StyleSheet.create({
   },
 
   explainCard: {
-    margin: 16,
-    marginTop: 0,
+    marginTop: 20,
     borderRadius: 12,
     borderLeftWidth: 4,
     padding: 14,

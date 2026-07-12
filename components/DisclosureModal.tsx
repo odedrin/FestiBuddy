@@ -57,7 +57,7 @@ export function DisclosureModal({ visible, isFirstLaunch = false, onDismiss, onR
           <Text style={styles.icon}>🛡️</Text>
           <Text style={[styles.title, { color: textColor }]}>Before you begin</Text>
           <Text style={[styles.subtitle, { color: subColor }]}>
-            A few things you should know about FestiBud
+            A few things you should know about DoseAngel
           </Text>
         </View>
 
@@ -72,7 +72,7 @@ export function DisclosureModal({ visible, isFirstLaunch = false, onDismiss, onR
             <Text style={styles.cardIcon}>🔒</Text>
             <Text style={[styles.cardTitle, { color: textColor }]}>100% offline · no data leaves your device</Text>
             <Text style={[styles.cardBody, { color: subColor }]}>
-              FestiBud stores everything exclusively in local app storage. No account is required,
+              DoseAngel stores everything exclusively in local app storage. No account is required,
               no analytics are collected, and no information is ever transmitted to any server.
             </Text>
           </View>
@@ -85,7 +85,7 @@ export function DisclosureModal({ visible, isFirstLaunch = false, onDismiss, onR
               Pharmacokinetic curves and duration estimates are population midpoints sourced from
               PsychonautWiki and TripSit. Individual responses vary significantly with dose,
               bodyweight, tolerance, metabolism, and route of administration.{'\n\n'}
-              FestiBud is <Text style={[styles.bold, { color: textColor }]}>not medical advice</Text>.
+              DoseAngel is <Text style={[styles.bold, { color: textColor }]}>not medical advice</Text>.
               It does not encourage or facilitate drug use. When in doubt, consult a medical professional
               or a local harm reduction service.
             </Text>

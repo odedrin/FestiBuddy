@@ -84,7 +84,7 @@ export function EditStopwatchStartModal({
           {/* Header */}
           <View style={styles.entryHeader}>
             <View style={[styles.dot, { backgroundColor: type.color }]} />
-            <Text style={[styles.entryName, { color: textColor }]}>Edit Start — {type.name}</Text>
+            <Text style={[styles.entryName, { color: textColor }]}>Edit Start: {type.name}</Text>
           </View>
 
           <ScrollView

@@ -8,6 +8,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { StopwatchProvider } from '@/store/StopwatchContext';
 import { ColorSchemeProvider } from '@/store/ColorSchemeContext';
 import { DisclosureModal } from '@/components/DisclosureModal';
+import { TourOverlay } from '@/components/TourOverlay';
+import { TourProvider, hasTourCompleted, useTour } from '@/store/TourContext';
 
 const DISCLOSURE_KEY = 'disclosure:dismissed';
 
@@ -18,7 +20,9 @@ export const unstable_settings = {
 export default function RootLayout() {
   return (
     <ColorSchemeProvider>
-      <RootLayoutInner />
+      <TourProvider>
+        <RootLayoutInner />
+      </TourProvider>
     </ColorSchemeProvider>
   );
 }
@@ -26,6 +30,7 @@ export default function RootLayout() {
 function RootLayoutInner() {
   const colorScheme = useColorScheme();
   const [disclosureVisible, setDisclosureVisible] = useState(false);
+  const tour = useTour();
 
   // Show disclosure on first launch (when key is absent from AsyncStorage)
   useEffect(() => {
@@ -37,6 +42,13 @@ function RootLayoutInner() {
   function dismissDisclosure(suppress: boolean) {
     setDisclosureVisible(false);
     if (suppress) AsyncStorage.setItem(DISCLOSURE_KEY, 'true');
+
+    // This instance of DisclosureModal only ever shows on first launch, so
+    // dismissing it is the natural moment to kick off the guided tour —
+    // once, and only if it hasn't already been completed or skipped before.
+    hasTourCompleted().then(done => {
+      if (!done) setTimeout(() => tour.start(), 400);
+    });
   }
 
   return (
@@ -54,6 +66,8 @@ function RootLayoutInner() {
         isFirstLaunch
         onDismiss={dismissDisclosure}
       />
+
+      <TourOverlay />
     </StopwatchProvider>
   );
 }

@@ -25,6 +25,7 @@ import { Graph, GraphNavBar } from '@/components/Graph';
 import { EditStopwatchStartModal } from '@/components/EditStopwatchStartModal';
 import { AddStopwatchModal } from '@/components/AddStopwatchModal';
 import type { GraphRef, PlanCurve, PlanMarker } from '@/components/Graph';
+import { useTourTarget } from '@/store/tourTargets';
 
 if (
   Platform.OS === 'android' &&
@@ -46,6 +47,11 @@ export default function LiveGraphScreen() {
   const graphRef = useRef<GraphRef>(null);
   const [isGraphPanned, setIsGraphPanned] = useState(false);
   const [isGraphDay, setIsGraphDay] = useState(false);
+
+  // Onboarding tour targets — see store/TourContext.tsx for the step copy.
+  const graphTourRef = useTourTarget('live.graph');
+  const fabTourRef = useTourTarget('live.fab');
+  const legendTourRef = useTourTarget('live.legend');
 
   // Multi-select state
   const [isSelectMode, setIsSelectMode] = useState(false);
@@ -234,7 +240,7 @@ export default function LiveGraphScreen() {
         )}
 
         {/* ── Container: Graph ── */}
-        <View style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <View ref={graphTourRef} style={[styles.graphCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
           {/* Compact timer above graph */}
           <View style={styles.timerRow}>
             <Text style={[styles.timerLabel, { color: subColor }]}>ELAPSED</Text>
@@ -300,7 +306,7 @@ export default function LiveGraphScreen() {
              Collapsing/expanding never touches the graph; when expanded and the
              list is long, the whole screen scrolls (see outer ScrollView) so
              every running stopwatch is reachable. ── */}
-        <View style={[styles.legendCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+        <View ref={legendTourRef} style={[styles.legendCard, { backgroundColor: cardBg, borderColor: cardBorder }]}>
 
           {/* Header — tap to collapse/expand */}
           <TouchableOpacity
@@ -351,7 +357,7 @@ export default function LiveGraphScreen() {
           {state.activeStopwatches.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={[styles.emptyText, { color: subColor }]}>
-                Start stopwatches on the Stopwatches tab to see them here.
+                Tap + to start tracking your first dose.
               </Text>
             </View>
           ) : (
@@ -445,6 +451,7 @@ export default function LiveGraphScreen() {
 
       {/* FAB: add stopwatch (floats above the scrolling content) */}
       <TouchableOpacity
+        ref={fabTourRef}
         style={[styles.fab, { backgroundColor: accent }]}
         onPress={() => setAddVisible(true)}
       >

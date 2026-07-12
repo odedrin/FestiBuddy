@@ -15,6 +15,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useStopwatch } from '@/store/StopwatchContext';
 import type { Plan, PlannedEntry, StopwatchType } from '@/types/models';
 import { formatEntryTime } from '@/utils/formatEntryTime';
+import { useTourTarget } from '@/store/tourTargets';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
@@ -306,6 +307,9 @@ export default function PlanScreen() {
   const [isGraphDay, setIsGraphDay] = useState(false);
   const [visibleWindow, setVisibleWindow] = useState<{ start: number; end: number } | null>(null);
 
+  // Onboarding tour target — see store/TourContext.tsx for the step copy.
+  const chipsTourRef = useTourTarget('plan.chips');
+
   // Collapsible sections — collapsing never shrinks the graph; the screen
   // itself scrolls to reveal full content instead (same pattern as the
   // Live screen's "Running now" legend).
@@ -449,15 +453,17 @@ export default function PlanScreen() {
       </View>
 
       {/* Plan chip selector */}
-      <PlanChipBar
-        plans={state.plans}
-        selectedId={selectedPlan?.id ?? ''}
-        onSelect={setSelectedPlanId}
-        onAdd={() => setCreatePlanVisible(true)}
-        onRename={id => setRenameId(id)}
-        onDelete={handleDeletePlan}
-        isDark={isDark}
-      />
+      <View ref={chipsTourRef}>
+        <PlanChipBar
+          plans={state.plans}
+          selectedId={selectedPlan?.id ?? ''}
+          onSelect={setSelectedPlanId}
+          onAdd={() => setCreatePlanVisible(true)}
+          onRename={id => setRenameId(id)}
+          onDelete={handleDeletePlan}
+          isDark={isDark}
+        />
+      </View>
 
       {/* Everything below the chip bar scrolls, same as the Live Graph screen —
           collapsing a section never shrinks the graph; the page scrolls instead. */}
@@ -579,7 +585,7 @@ export default function PlanScreen() {
             <View style={styles.entryListBody}>
               {richEntries.length === 0 ? (
                 <Text style={[styles.emptyText, { color: subColor }]}>
-                  No entries yet — tap Edit to add one.
+                  No entries yet. Tap Edit to add one.
                 </Text>
               ) : (
                 richEntries.map(e => (

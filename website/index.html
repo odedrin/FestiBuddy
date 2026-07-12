@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DoseAngel: Know what's in your system</title>
+<meta name="description" content="DoseAngel is a harm reduction app that visualizes overlapping effects of substances in real time, helping you plan safely and avoid dangerous combinations." />
+<link rel="icon" type="image/png" href="assets/doseangel-favicon.png" />
+<style>
+  :root {
+    --bg:        #0d0d0f;
+    --surface:   #16181c;
+    --surface2:  #1e2126;
+    --border:    #2a2d35;
+    --text:      #e8eaf0;
+    --sub:       #7a8090;
+    --teal:      #4ecdc4;
+    --red:       #ff6b6b;
+    --code-bg:   #111318;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* ── Privacy banner ── */
+  .privacy-banner {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    background: var(--teal);
+    color: #06201d;
+    font-weight: 800;
+    font-size: 17px;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 16px 20px;
+    text-align: center;
+    border-bottom: 2px solid #06201d;
+  }
+  .privacy-banner .icon { font-size: 20px; flex-shrink: 0; }
+  @media (max-width: 560px) {
+    .privacy-banner { font-size: 13px; padding: 12px 14px; gap: 8px; }
+    .privacy-banner .icon { font-size: 16px; }
+  }
+
+  /* offset the sticky header below the sticky privacy banner */
+  header { top: 56px; }
+  @media (max-width: 560px) { header { top: 46px; } }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(13,13,15,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    max-width: 880px;
+    margin: 0 auto;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  .brand span { color: var(--teal); }
+  nav.top-nav { display: flex; gap: 24px; }
+  nav.top-nav a { color: var(--sub); font-size: 14px; font-weight: 600; }
+  nav.top-nav a:hover { color: var(--text); text-decoration: none; }
+  @media (max-width: 560px) { nav.top-nav { display: none; } }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 88px 24px 64px;
+    text-align: center;
+  }
+  .hero-icon {
+    width: 88px;
+    height: 88px;
+    border-radius: 22px;
+    margin-bottom: 28px;
+    box-shadow: 0 12px 40px rgba(78,205,196,0.18);
+  }
+  .hero h1 {
+    font-size: clamp(28px, 7vw, 42px);
+    font-weight: 800;
+    letter-spacing: -1px;
+    margin-bottom: 16px;
+  }
+  .hero h1 span { color: var(--teal); }
+  .hero p.sub {
+    color: var(--sub);
+    font-size: clamp(15px, 4vw, 18px);
+    max-width: 560px;
+    margin: 0 auto 36px;
+  }
+
+  .store-badges {
+    display: flex;
+    gap: 14px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .store-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 11px 20px;
+    color: var(--text);
+    font-size: 14px;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .store-btn:hover { border-color: var(--teal); text-decoration: none; transform: translateY(-1px); }
+  .store-btn svg { width: 22px; height: 22px; flex-shrink: 0; }
+  .store-btn .lines { text-align: left; line-height: 1.25; }
+  .store-btn .lines small { display: block; color: var(--sub); font-size: 11px; }
+  .store-btn .lines strong { display: block; font-size: 15px; }
+  .store-btn .soon-tag {
+    margin-left: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--sub);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2px 8px;
+  }
+  .hero-note { color: var(--sub); font-size: 13px; }
+
+  @media (max-width: 600px) {
+    .hero { padding: 48px 20px 48px; }
+    .hero-icon { width: 68px; height: 68px; margin-bottom: 20px; }
+    .store-badges { flex-direction: column; align-items: stretch; gap: 10px; }
+    .store-btn { justify-content: flex-start; padding: 12px 16px; }
+    .store-btn .soon-tag { margin-left: auto; }
+  }
+
+  /* ── Signup ── */
+  .signup-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin: 8px auto 28px;
+    max-width: 480px;
+    text-align: center;
+  }
+  .signup-box h3 { font-size: 16px; margin-bottom: 6px; }
+  .signup-box p { color: var(--sub); font-size: 13.5px; margin-bottom: 16px; }
+  .signup-form { display: flex; gap: 10px; }
+  .signup-form input[type="email"] {
+    flex: 1;
+    min-width: 0;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-size: 14px;
+  }
+  .signup-form input[type="email"]::placeholder { color: var(--sub); }
+  .signup-form input[type="email"]:focus { outline: none; border-color: var(--teal); }
+  .signup-form button {
+    background: var(--teal);
+    color: #06201d;
+    border: none;
+    border-radius: 9px;
+    padding: 11px 18px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .signup-form button:hover { opacity: 0.9; }
+  .signup-note { color: var(--sub); font-size: 11.5px; margin-top: 10px; margin-bottom: 0; }
+  @media (max-width: 480px) {
+    .signup-form { flex-direction: column; }
+  }
+
+  /* ── Callout ── */
+  .callout {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--teal);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 32px auto;
+    max-width: 720px;
+    font-size: 14px;
+    color: var(--sub);
+    text-align: left;
+  }
+
+  /* ── Sections ── */
+  section { padding: 64px 24px; border-top: 1px solid var(--border); }
+  section .wrap { max-width: 880px; }
+  h2 {
+    font-size: clamp(21px, 5vw, 26px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 12px;
+  }
+  h2 span { color: var(--teal); }
+  .section-sub { color: var(--sub); font-size: 15px; margin-bottom: 40px; max-width: 560px; }
+
+  @media (max-width: 600px) {
+    section { padding: 44px 20px; }
+    .section-sub { margin-bottom: 28px; }
+  }
+
+  /* ── Guide grid ── */
+  .guide-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 640px) { .guide-grid { grid-template-columns: 1fr; } }
+  .guide-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 22px;
+  }
+  .guide-card .num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--teal);
+    color: #000;
+    font-weight: 800;
+    font-size: 12px;
+    border-radius: 6px;
+    margin-bottom: 12px;
+  }
+  .guide-card h3 { font-size: 16px; margin-bottom: 6px; }
+  .guide-card p { color: var(--sub); font-size: 13.5px; line-height: 1.6; }
+
+  /* ── FAQ ── */
+  .faq-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 12px;
+    background: var(--surface);
+    overflow: hidden;
+  }
+  .faq-item summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 18px 20px;
+    font-weight: 600;
+    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .faq-item summary::-webkit-details-marker { display: none; }
+  .faq-item summary::after {
+    content: "+";
+    color: var(--teal);
+    font-size: 20px;
+    font-weight: 400;
+    flex-shrink: 0;
+    transition: transform 0.15s;
+  }
+  .faq-item[open] summary::after { content: "–"; }
+  .faq-item .faq-body {
+    padding: 0 20px 18px;
+    color: var(--sub);
+    font-size: 14px;
+    line-height: 1.7;
+  }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px 48px;
+    text-align: center;
+  }
+  footer p { color: var(--sub); font-size: 13px; margin-bottom: 6px; }
+  footer .foot-links { margin-top: 14px; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  footer .foot-links a { font-size: 13px; color: var(--sub); }
+  footer .foot-links a:hover { color: var(--teal); }
+</style>
+</head>
+<body>
+
+  <div class="privacy-banner"><span class="icon">🔒</span>Fully offline. Nothing you enter ever leaves your device.</div>
+
+  <header>
+    <div class="header-inner">
+      <div class="brand"><img src="assets/doseangel-logo.png" alt="DoseAngel logo" />Dose<span>Angel</span></div>
+      <nav class="top-nav">
+        <a href="#guide">Guide</a>
+        <a href="#settings">Settings</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#faq">FAQ</a>
+        <a href="#updates">Updates</a>
+        <a href="#download">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- ── Hero ── -->
+  <section class="hero" style="border-top:none; padding-top:88px;">
+    <div class="wrap">
+      <img src="assets/doseangel-logo.png" alt="DoseAngel app icon" class="hero-icon" />
+      <h1>Know what's in your system,<br />and what's <span>coming next</span>.</h1>
+      <p class="sub">DoseAngel is a harm reduction app that visualizes how your substances overlap over time, so you can plan ahead, avoid dangerous combinations, and never accidentally re-dose.</p>
+
+      <div class="store-badges" id="download">
+        <!-- TODO: replace href="#" with real App Store link once available -->
+        <a class="store-btn" href="#" aria-label="Download on the App Store (coming soon)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8.87-.19 1.7-.86 3.24-.86 1.83.08 3.21.86 3.99 2.15-3.5 2.1-2.79 6.68.34 8.4-.63 1.32-1.44 2.63-2.65 2.48Zm-3.7-16.9c.11 1.72-1.29 3.28-2.9 3.16-.19-1.68 1.36-3.44 2.9-3.16Z"/></svg>
+          <span class="lines"><small>Download on the</small><strong>App Store</strong></span>
+          <span class="soon-tag">Coming soon</span>
+        </a>
+        <!-- TODO: replace href="#" with real Google Play link once available -->
+        <a class="store-btn" href="#" aria-label="Get it on Google Play (coming soon)">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3.6 2.4c-.4.2-.6.6-.6 1.1v17c0 .5.2.9.6 1.1l9.4-9.6-9.4-9.6Zm11 9.6 2.5 2.5 5.8-3.3c.7-.4.7-1.4 0-1.8l-5.8-3.3-2.5 2.5-2.5-2.5-2.5 2.5 4 4-4 4 2.5-2.5 2.5-2.5Zm0 0-2.5-2.5-8.3-8.3 8.3 8.3-8.3 8.3 8.3-8.3 2.5 2.5Z"/></svg>
+          <span class="lines"><small>Get it on</small><strong>Google Play</strong></span>
+          <span class="soon-tag">Coming soon</span>
+        </a>
+      </div>
+
+      <div class="callout">
+        DoseAngel does not encourage or promote substance use, and nothing in this app is medical advice. It's a safety and planning tool for people who are already making their own informed choices, designed to reduce harm, not increase use. If you choose to use any of these substances, you do so at your own risk: many of them are illegal in many countries, and all of them carry a risk of addiction. If you're concerned about your own or someone else's substance use, please reach out to a medical professional or a local addiction support service.
+      </div>
+
+      <!--
+        TODO (Zoho Campaigns setup):
+        1. Sign in to Zoho Campaigns (or sign up free) and create a mailing list, e.g. "DoseAngel Updates".
+        2. Go to Signup Forms → Create Signup Form → Embedded Form, pick that mailing list, keep it to just the Email field.
+        3. Save & Publish, then open the Share tab and copy the "Form Embed Code" snippet.
+        4. Paste that snippet in place of the <form class="signup-form"> block below (keep the surrounding .signup-box div).
+        5. To send updates later: Zoho Campaigns → Campaigns → Create Campaign → pick the same mailing list → compose & send.
+      -->
+      <div class="signup-box" id="updates">
+        <h3>Get notified when DoseAngel launches</h3>
+        <p>No spam, just a heads up when the app is live and occasional updates.</p>
+        <form class="signup-form" action="#" method="POST">
+          <input type="email" name="email" placeholder="you@example.com" required />
+          <button type="submit">Notify me</button>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Quick Guide ── -->
+  <section id="guide">
+    <div class="wrap">
+      <h2>How <span>DoseAngel</span> works</h2>
+      <p class="section-sub">A quick tour of the core features. For the full technical guide, see the in-app help.</p>
+
+      <div class="guide-grid">
+        <div class="guide-card">
+          <div class="num">1</div>
+          <h3>Live graph</h3>
+          <p>Every substance you start is modeled as a rise-and-fall curve. The Live screen sums them all in real time, showing exactly what's active in your system right now, and an estimated prediction of what's coming next. It's a forecast based on typical timing, not a guarantee.</p>
+        </div>
+        <div class="guide-card">
+          <div class="num">2</div>
+          <h3>Plan ahead</h3>
+          <p>Use Plan Mode to lay out the doses you're thinking of taking over the course of a session, and preview the combined curve before starting anything for real. For each entry, choose one of three ways to set its timing: the clock time you'll take it, the clock time you want to peak, or the clock time you want to reach a specific point during the comedown. These are estimates, not exact predictions, since individual response varies. Any plan can also be overlaid on top of the Live graph, so you can compare it against what's actually happening in real time.</p>
+        </div>
+        <div class="guide-card">
+          <div class="num">3</div>
+          <h3>Check combos</h3>
+          <p>Pick any two of the 16 bundled substances to see documented interaction risk, from mild synergy to dangerous combinations, sourced from <a href="https://tripsit.me" target="_blank" rel="noopener">TripSit</a> and <a href="https://psychonautwiki.org" target="_blank" rel="noopener">PsychonautWiki</a> data.</p>
+        </div>
+        <div class="guide-card">
+          <div class="num">4</div>
+          <h3>Get warned automatically</h3>
+          <p>Starting a substance that interacts with something already active triggers an automatic warning before you confirm, so risky combinations are hard to miss by accident.</p>
+        </div>
+        <div class="guide-card">
+          <div class="num">5</div>
+          <h3>Customize substances</h3>
+          <p>Customize any of the 16 bundled substances to match your own experience. From Settings → Manage (Substances Library), tap Customize on a profile to create your own editable copy with its own onset, peak, and offset timing.</p>
+        </div>
+        <div class="guide-card">
+          <div class="num">6</div>
+          <h3>Private by design</h3>
+          <p>Everything is stored locally on your device. There are no accounts, no servers, and no data ever transmitted anywhere.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Settings ── -->
+  <section id="settings">
+    <div class="wrap">
+      <h2>Make it <span>yours</span></h2>
+      <p class="section-sub">What you can configure from the Settings tab.</p>
+
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>Appearance</h3>
+          <p>Follow your system's light or dark mode automatically, or lock DoseAngel to Light or Dark regardless of your device setting.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Interaction badges</h3>
+          <p>Toggle the warning badges that appear in the substance list when something you're about to add has a known interaction with a substance that's already active.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Warning popups</h3>
+          <p>Toggle the confirmation dialog that appears before you start a substance with a known interaction risk against something already active.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Plan overlay</h3>
+          <p>Choose how an active plan appears on the Live graph: as simple start-time markers, or as the full predicted curve for each planned substance.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── FAQ ── -->
+  <section id="faq">
+    <div class="wrap">
+      <h2>Frequently asked <span>questions</span></h2>
+      <p class="section-sub">Everything else you might want to know before downloading.</p>
+
+      <details class="faq-item" open>
+        <summary>Is DoseAngel promoting or encouraging drug use?</summary>
+        <div class="faq-body">No. DoseAngel is a harm reduction tool built for people who use substances and want to do so more safely. It doesn't advise you to take anything. It helps you understand timing, overlap, and interaction risk for choices you're already making.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Does DoseAngel store or send my data anywhere?</summary>
+        <div class="faq-body">No. DoseAngel works fully offline. Everything you log stays on your device in local storage, nothing is transmitted to a server, and there's no account or sign-in required.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>What substances are supported?</summary>
+        <div class="faq-body">DoseAngel ships with 16 bundled profiles covering substances commonly used for recreational purposes, sourced from <a href="https://psychonautwiki.org" target="_blank" rel="noopener">PsychonautWiki</a>. You can also create a fully custom profile for any substance with your own onset, peak, and offset timing, by going to Settings → Manage (Substances Library) and tapping Customize on an existing profile.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>How accurate are the timing curves?</summary>
+        <div class="faq-body">They're averages, sourced from <a href="https://psychonautwiki.org" target="_blank" rel="noopener">PsychonautWiki</a> (a community-run wiki documenting psychoactive substances) data, so they represent a typical response for a common route of administration. Individual response varies with dose, bodyweight, tolerance, and metabolism. If you know how something affects you specifically, you can customize the curve to match your own experience.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Can I use this for prescription medications?</summary>
+        <div class="faq-body">That's not really what DoseAngel is built for. Managing prescription medication should be done with your physician, and there are dedicated medication-management apps designed for that. DoseAngel is focused on harm reduction for recreational substance use.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Where does the interaction warning data come from?</summary>
+        <div class="faq-body">The interaction database is based on <a href="https://tripsit.me" target="_blank" rel="noopener">TripSit</a> (a harm reduction community that publishes drug combination and safety data) combination data, covering roughly 35 substance pairs by severity, from dangerous combinations down to low-risk synergies. It only covers the 16 bundled substances; custom types aren't checked against it.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Is DoseAngel free?</summary>
+        <div class="faq-body">Yes, 100% free, no in-app purchases. DoseAngel is built for harm reduction and the community, not for profit.</div>
+      </details>
+
+      <details class="faq-item">
+        <summary>Have a feature request?</summary>
+        <div class="faq-body">We'd love to hear it. Email <a href="mailto:odedr@doseangel.com">odedr@doseangel.com</a> with your idea.</div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ── Roadmap ── -->
+  <section id="roadmap">
+    <div class="wrap">
+      <h2>What's <span>coming next</span></h2>
+      <p class="section-sub">Features planned for future releases.</p>
+
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>Plan notifications</h3>
+          <p>Local notifications to help you follow a saved plan as it happens, without needing to keep the app open.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Emergency contacts</h3>
+          <p>Emergency services numbers by country, available directly in the app.</p>
+        </div>
+        <div class="guide-card">
+          <h3>Addiction support lines</h3>
+          <p>Addiction hotline numbers by country, for anyone who wants to talk to someone about their substance use.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>DoseAngel is a harm reduction and planning tool. It is not a substitute for medical advice.</p>
+    <p>© 2026 DoseAngel. All rights reserved.</p>
+    <div class="foot-links">
+      <a href="#guide">Guide</a>
+      <a href="#settings">Settings</a>
+      <a href="#roadmap">Roadmap</a>
+      <a href="#faq">FAQ</a>
+      <a href="#updates">Updates</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="/support.html">Support</a>
+      <a href="mailto:odedr@doseangel.com">Contact</a>
+    </div>
+  </footer>
+
+</body>
+</html>

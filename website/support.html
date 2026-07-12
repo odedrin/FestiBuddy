@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Support - DoseAngel</title>
+<meta name="description" content="Get help with DoseAngel, report a bug, or send a feature request." />
+<link rel="icon" type="image/png" href="assets/doseangel-favicon.png" />
+<style>
+  :root {
+    --bg:        #0d0d0f;
+    --surface:   #16181c;
+    --surface2:  #1e2126;
+    --border:    #2a2d35;
+    --text:      #e8eaf0;
+    --sub:       #7a8090;
+    --teal:      #4ecdc4;
+    --red:       #ff6b6b;
+    --code-bg:   #111318;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.65;
+  }
+
+  a { color: var(--teal); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  .wrap {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    background: rgba(13,13,15,0.85);
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+  .header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.3px;
+    color: var(--text);
+  }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; }
+  .brand span { color: var(--teal); }
+  nav.top-nav a { color: var(--sub); font-size: 14px; font-weight: 600; }
+  nav.top-nav a:hover { color: var(--text); text-decoration: none; }
+
+  main { padding: 56px 24px 64px; }
+  h1 {
+    font-size: clamp(26px, 6vw, 34px);
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    margin-bottom: 8px;
+  }
+  .sub-lede { color: var(--sub); font-size: 15px; margin-bottom: 40px; max-width: 520px; }
+  h2 {
+    font-size: 19px;
+    font-weight: 700;
+    margin: 36px 0 12px;
+    letter-spacing: -0.2px;
+  }
+  p { margin-bottom: 14px; color: var(--text); font-size: 15px; }
+  p.muted { color: var(--sub); }
+  ul { margin: 0 0 14px 20px; color: var(--text); font-size: 15px; }
+  li { margin-bottom: 8px; }
+
+  .contact-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 22px 24px;
+    margin-bottom: 32px;
+  }
+  .contact-card h3 { font-size: 16px; margin-bottom: 6px; }
+  .contact-card p { color: var(--sub); font-size: 13.5px; margin-bottom: 12px; }
+  .contact-card a.email-btn {
+    display: inline-block;
+    background: var(--teal);
+    color: #06201d;
+    font-weight: 700;
+    font-size: 14px;
+    padding: 10px 18px;
+    border-radius: 9px;
+  }
+  .contact-card a.email-btn:hover { opacity: 0.9; text-decoration: none; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 40px 24px 48px;
+    text-align: center;
+  }
+  footer p { color: var(--sub); font-size: 13px; margin-bottom: 6px; }
+  footer .foot-links { margin-top: 14px; display: flex; gap: 20px; justify-content: center; flex-wrap: wrap; }
+  footer .foot-links a { font-size: 13px; color: var(--sub); }
+  footer .foot-links a:hover { color: var(--teal); }
+</style>
+</head>
+<body>
+
+  <header>
+    <div class="header-inner">
+      <a href="/" class="brand"><img src="assets/doseangel-logo.png" alt="DoseAngel logo" />Dose<span>Angel</span></a>
+      <nav class="top-nav">
+        <a href="/">Home</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <h1>Support</h1>
+    <p class="sub-lede">Need help with DoseAngel, found a bug, or have an idea for a feature? Here's how to reach us.</p>
+
+    <div class="contact-card">
+      <h3>Email support</h3>
+      <p>We typically reply within a few days.</p>
+      <a class="email-btn" href="mailto:odedr@doseangel.com">odedr@doseangel.com</a>
+    </div>
+
+    <h2>Reporting a bug</h2>
+    <p>To help us fix it quickly, please include:</p>
+    <ul>
+      <li>Your device model and iOS version</li>
+      <li>The DoseAngel app version (Settings &gt; About)</li>
+      <li>What you were doing right before the issue happened</li>
+      <li>A screenshot, if possible</li>
+    </ul>
+
+    <h2>Feature requests</h2>
+    <p>We'd love to hear your ideas. Send them to the email above, and check the <a href="/#roadmap">Roadmap</a> section on the homepage to see what's already planned.</p>
+
+    <h2>Common questions</h2>
+    <p>Many common questions, like what substances are supported, how accurate the timing curves are, and whether DoseAngel stores your data, are answered on the <a href="/#faq">FAQ</a> section of the homepage.</p>
+  </main>
+
+  <footer>
+    <p>DoseAngel is a harm reduction and planning tool. It is not a substitute for medical advice.</p>
+    <p>&copy; 2026 DoseAngel. All rights reserved.</p>
+    <div class="foot-links">
+      <a href="/">Home</a>
+      <a href="/privacy.html">Privacy</a>
+      <a href="mailto:odedr@doseangel.com">Contact</a>
+    </div>
+  </footer>
+
+</body>
+</html>

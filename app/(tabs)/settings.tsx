@@ -16,6 +16,8 @@ import type { ColorSchemePreference } from '@/store/ColorSchemeContext';
 import { useStopwatch } from '@/store/StopwatchContext';
 import { DisclosureModal } from '@/components/DisclosureModal';
 import { TypesSection } from '@/components/TypesSection';
+import { useTour } from '@/store/TourContext';
+import { useTourTarget } from '@/store/tourTargets';
 
 const SCHEME_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
   { label: 'System', value: 'system' },
@@ -30,6 +32,10 @@ export default function SettingsScreen() {
   const { colorSchemePreference, setColorScheme } = useColorSchemePreference();
   const [disclosureVisible, setDisclosureVisible] = useState(false);
   const [typesExpanded, setTypesExpanded] = useState(false);
+  const tour = useTour();
+
+  // Onboarding tour target — see store/TourContext.tsx for the step copy.
+  const harmReductionTourRef = useTourTarget('settings.harmReduction');
 
   const bgColor   = isDark ? '#000' : '#F2F2F7';
   const cardBg    = isDark ? '#1E2022' : '#fff';
@@ -97,7 +103,7 @@ export default function SettingsScreen() {
 
   // Harm Reduction
   blocks.push(
-    <View key="harm-reduction">
+    <View key="harm-reduction" ref={harmReductionTourRef}>
       <Text style={[styles.groupLabel, { color: subColor }]}>Harm Reduction</Text>
       <View style={[styles.card, { backgroundColor: cardBg }]}>
         <View style={[styles.row, { borderBottomColor: sepColor }]}>
@@ -248,6 +254,15 @@ export default function SettingsScreen() {
           <Text style={[styles.infoLabel, { color: subColor }]}>Privacy & disclosure</Text>
           <Text style={[styles.infoValue, { color: textColor }]}>View ↗</Text>
         </TouchableOpacity>
+        <View style={[styles.sep, { backgroundColor: sepColor }]} />
+        <TouchableOpacity
+          style={styles.infoRow}
+          onPress={() => tour.start()}
+          activeOpacity={0.6}
+        >
+          <Text style={[styles.infoLabel, { color: subColor }]}>Interactive tour</Text>
+          <Text style={[styles.infoValue, { color: textColor }]}>Replay ↗</Text>
+        </TouchableOpacity>
       </View>
     </View>,
   );
@@ -255,7 +270,7 @@ export default function SettingsScreen() {
   // Disclaimer
   blocks.push(
     <Text key="disclaimer" style={[styles.disclaimer, { color: subColor }]}>
-      FestiBud provides pharmacokinetic reference data for harm reduction purposes only.
+      DoseAngel provides pharmacokinetic reference data for harm reduction purposes only.
       Duration estimates are population midpoints. Individual responses vary significantly
       with dose, bodyweight, tolerance, and co-administration. Always consult a medical
       professional if in doubt.

@@ -201,7 +201,7 @@ export function CreatePlanModal({ visible, isDark, defaultName, now, onCancel, o
           />
 
           <Text style={[styles.sectionLabel, { color: subColor }]}>
-            {entries.length > 0 ? `Substances (${entries.length})` : 'Substances (optional — add later if you prefer)'}
+            {entries.length > 0 ? `Substances (${entries.length})` : 'Substances (optional, add later if you prefer)'}
           </Text>
 
           <ScrollView

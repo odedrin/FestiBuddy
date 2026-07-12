@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>FestiBud — User Guide & Product Documentation</title>
+  <title>DoseAngel — User Guide & Product Documentation</title>
   <style>
     :root {
       --bg:        #0d0d0f;
@@ -384,10 +384,10 @@
 
   <!-- ── Sidebar ── -->
   <nav>
-    <div class="nav-logo">Festi<span>Bud</span></div>
+    <div class="nav-logo">Dose<span>Angel</span></div>
     <ul>
       <li class="section"><a href="#what">Overview</a></li>
-      <li><a href="#what">1. What is FestiBud?</a></li>
+      <li><a href="#what">1. What is DoseAngel?</a></li>
       <li><a href="#model">2. Superposition Model</a></li>
       <li><a href="#types">3. Stopwatch Types</a></li>
       <li class="section"><a href="#screens">Screens</a></li>
@@ -410,7 +410,7 @@
 
     <!-- Header -->
     <div class="doc-header">
-      <h1>Festi<span>Bud</span></h1>
+      <h1>Dose<span>Angel</span></h1>
       <p style="color:var(--sub); font-size:16px;">User Guide &amp; Product Documentation</p>
       <div class="meta-pills">
         <span class="pill">v1.7</span>
@@ -421,11 +421,11 @@
       </div>
     </div>
 
-    <!-- ── 1. What is FestiBud? ── -->
+    <!-- ── 1. What is DoseAngel? ── -->
     <section id="what">
-      <h2><span class="sec-num">1</span> What is FestiBud?</h2>
+      <h2><span class="sec-num">1</span> What is DoseAngel?</h2>
       <p>
-        FestiBud is a <strong>harm reduction tool</strong> for people who take medications or
+        DoseAngel is a <strong>harm reduction tool</strong> for people who take
         substances and want to understand the timing, duration, and interaction of their effects.
         By planning ahead and visualising how multiple substances overlap across time, users can
         make safer decisions — avoiding dangerous combinations, preventing unintentional
@@ -433,11 +433,11 @@
       </p>
       <p>
         The core engine is a <strong>superposition stopwatch</strong>: each substance is modelled
-        as a rise-and-fall curve f(t), and FestiBud displays the sum of all active curves — the
+        as a rise-and-fall curve f(t), and DoseAngel displays the sum of all active curves — the
         superposition signal — as a live graph with a deterministic prediction of the future.
       </p>
       <div class="callout">
-        FestiBud does not encourage or promote substance use. It is a safety and planning tool,
+        DoseAngel does not encourage or promote substance use. It is a safety and planning tool,
         designed to reduce harm for people who are already making their own informed choices.
         All data stays on your device — nothing is ever transmitted or stored externally.
       </div>
@@ -510,7 +510,7 @@
       <h3>The global signal y(t)</h3>
       <p>
         When multiple stopwatches run simultaneously — including multiple instances of the same
-        type started at different times — FestiBud computes:
+        type started at different times — DoseAngel computes:
       </p>
       <div class="math">y(t) = Σ f<sub>i</sub>(t − startTime<sub>i</sub>)</div>
       <p>
@@ -529,7 +529,7 @@
       <p>A <strong>type</strong> is a template defining the shape of f(t). Any number of simultaneous instances of the same type can run at once.</p>
 
       <h3>Built-in types</h3>
-      <p>FestiBud ships with two types that cannot be deleted, but can be copied and customised.</p>
+      <p>DoseAngel ships with two types that cannot be deleted, but can be copied and customised.</p>
 
       <div class="screen-card">
         <div class="screen-card-title" style="color:#ff6b6b;">● Quick <span class="badge">built-in</span></div>
@@ -755,7 +755,7 @@
     <!-- ── 4.5 Drug Interactions ── -->
     <section id="interactions">
       <h2><span class="sec-num">4.5</span> Drug Interactions</h2>
-      <p>FestiBud bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, FestiBud warns you before you commit — either at stopwatch start or plan entry add. To browse or look up a combination directly, see the <strong>Combos</strong> tab (§4.3).</p>
+      <p>DoseAngel bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, DoseAngel warns you before you commit — either at stopwatch start or plan entry add. To browse or look up a combination directly, see the <strong>Combos</strong> tab (§4.3).</p>
 
       <h4>Severity levels</h4>
       <table>
@@ -832,7 +832,7 @@
       </ul>
 
       <h4>Disclosure screen</h4>
-      <p>A full-screen page sheet summarising FestiBud's privacy stance and harm reduction context. It contains three cards:</p>
+      <p>A full-screen page sheet summarising DoseAngel's privacy stance and harm reduction context. It contains three cards:</p>
       <ul>
         <li><strong>100% offline · no data leaves your device</strong> — confirms that everything is stored locally and nothing is transmitted externally.</li>
         <li><strong>For harm reduction reference only</strong> — explains that PK data are population midpoints, individual responses vary significantly, and the app is not medical advice.</li>
@@ -842,7 +842,7 @@
       <p>The screen can always be reopened via <strong>Settings → Privacy &amp; disclosure → View ↗</strong>. In this context the checkbox is absent; a small <strong>Show on next launch</strong> link at the bottom clears the suppression flag so the screen will reappear automatically on the next cold start.</p>
 
       <h4>Disclaimer</h4>
-      <p>A reminder that FestiBud provides pharmacokinetic reference data for harm reduction purposes only — duration estimates are population midpoints, individual responses vary, and a medical professional should be consulted if in doubt.</p>
+      <p>A reminder that DoseAngel provides pharmacokinetic reference data for harm reduction purposes only — duration estimates are population midpoints, individual responses vary, and a medical professional should be consulted if in doubt.</p>
     </section>
 
     <!-- ── 5. Working with Plans ── -->
@@ -1158,7 +1158,7 @@ interface PlanMarker {
     </section>
 
     <footer>
-      FestiBud User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.7 &nbsp;·&nbsp; July 2026
+      DoseAngel User Guide &amp; Product Documentation &nbsp;·&nbsp; v1.7 &nbsp;·&nbsp; July 2026
     </footer>
 
   </main>
