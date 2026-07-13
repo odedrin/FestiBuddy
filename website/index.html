@@ -8,15 +8,19 @@
 <link rel="icon" type="image/png" href="assets/doseangel-favicon.png" />
 <style>
   :root {
-    --bg:        #0d0d0f;
-    --surface:   #16181c;
-    --surface2:  #1e2126;
-    --border:    #2a2d35;
-    --text:      #e8eaf0;
-    --sub:       #7a8090;
-    --teal:      #4ecdc4;
+    --bg:        #0a120c;
+    --surface:   #12251a;
+    --surface2:  #1a2b1f;
+    --border:    #24382b;
+    --text:      #eef2ee;
+    --sub:       #8a9a8d;
+    --teal:      #fea686;
+    --grad1:     #ffe2d7;
+    --grad2:     #fea686;
+    --grad3:     #ff6229;
+    --gradient:  linear-gradient(135deg, var(--grad1), var(--grad2), var(--grad3));
     --red:       #ff6b6b;
-    --code-bg:   #111318;
+    --code-bg:   #08120b;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -49,7 +53,7 @@
     align-items: center;
     justify-content: center;
     gap: 10px;
-    background: var(--teal);
+    background: var(--gradient);
     color: #06201d;
     font-weight: 800;
     font-size: 17px;
@@ -74,7 +78,7 @@
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
-    background: rgba(13,13,15,0.85);
+    background: rgba(10,18,12,0.85);
     backdrop-filter: blur(8px);
     z-index: 10;
   }
@@ -95,8 +99,13 @@
     letter-spacing: -0.3px;
     color: var(--text);
   }
-  .brand img { width: 28px; height: 28px; border-radius: 7px; }
-  .brand span { color: var(--teal); }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); }
+  .brand span {
+    background-image: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   nav.top-nav { display: flex; gap: 24px; }
   nav.top-nav a { color: var(--sub); font-size: 14px; font-weight: 600; }
   nav.top-nav a:hover { color: var(--text); text-decoration: none; }
@@ -112,7 +121,8 @@
     height: 88px;
     border-radius: 22px;
     margin-bottom: 28px;
-    box-shadow: 0 12px 40px rgba(78,205,196,0.18);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 12px 40px rgba(254,166,134,0.22);
   }
   .hero h1 {
     font-size: clamp(28px, 7vw, 42px);
@@ -120,7 +130,12 @@
     letter-spacing: -1px;
     margin-bottom: 16px;
   }
-  .hero h1 span { color: var(--teal); }
+  .hero h1 span {
+    background-image: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   .hero p.sub {
     color: var(--sub);
     font-size: clamp(15px, 4vw, 18px);
@@ -200,7 +215,7 @@
   .signup-form input[type="email"]::placeholder { color: var(--sub); }
   .signup-form input[type="email"]:focus { outline: none; border-color: var(--teal); }
   .signup-form button {
-    background: var(--teal);
+    background: var(--gradient);
     color: #06201d;
     border: none;
     border-radius: 9px;
@@ -215,6 +230,33 @@
   @media (max-width: 480px) {
     .signup-form { flex-direction: column; }
   }
+
+  /* ── Contact ── */
+  .contact-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 32px 24px;
+    text-align: center;
+  }
+  .contact-email-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 700;
+    font-size: 19px;
+    margin-top: 6px;
+  }
+  .contact-email-link:hover { text-decoration: none; }
+  .contact-email-link span {
+    background-image: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .contact-email-link .arrow { transition: transform 0.15s; }
+  .contact-email-link:hover .arrow { transform: translateX(4px); }
+  .contact-box p { color: var(--sub); margin-bottom: 6px; }
 
   /* ── Callout ── */
   .callout {
@@ -239,7 +281,12 @@
     letter-spacing: -0.5px;
     margin-bottom: 12px;
   }
-  h2 span { color: var(--teal); }
+  h2 span {
+    background-image: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   .section-sub { color: var(--sub); font-size: 15px; margin-bottom: 40px; max-width: 560px; }
 
   @media (max-width: 600px) {
@@ -266,7 +313,7 @@
     justify-content: center;
     width: 24px;
     height: 24px;
-    background: var(--teal);
+    background: var(--gradient);
     color: #000;
     font-weight: 800;
     font-size: 12px;
@@ -337,6 +384,7 @@
         <a href="#roadmap">Roadmap</a>
         <a href="#faq">FAQ</a>
         <a href="#updates">Updates</a>
+        <a href="#contact">Contact</a>
         <a href="#download">Download</a>
       </nav>
     </div>
@@ -346,7 +394,7 @@
   <section class="hero" style="border-top:none; padding-top:88px;">
     <div class="wrap">
       <img src="assets/doseangel-logo.png" alt="DoseAngel app icon" class="hero-icon" />
-      <h1>Know what's in your system,<br />and what's <span>coming next</span>.</h1>
+      <h1>Stay aware.<br /><span>Stay safer.</span></h1>
       <p class="sub">DoseAngel is a harm reduction app that visualizes how your substances overlap over time, so you can plan ahead, avoid dangerous combinations, and never accidentally re-dose.</p>
 
       <div class="store-badges" id="download">
@@ -391,7 +439,7 @@
   <section id="guide">
     <div class="wrap">
       <h2>How <span>DoseAngel</span> works</h2>
-      <p class="section-sub">A quick tour of the core features. For the full technical guide, see the in-app help.</p>
+      <p class="section-sub">A quick tour of the core features.</p>
 
       <div class="guide-grid">
         <div class="guide-card">
@@ -431,8 +479,8 @@
   <!-- ── Settings ── -->
   <section id="settings">
     <div class="wrap">
-      <h2>Make it <span>yours</span></h2>
-      <p class="section-sub">What you can configure from the Settings tab.</p>
+      <h2><span>Settings</span></h2>
+      <p class="section-sub">What you can configure.</p>
 
       <div class="guide-grid">
         <div class="guide-card">
@@ -522,6 +570,26 @@
           <h3>Addiction support lines</h3>
           <p>Addiction hotline numbers by country, for anyone who wants to talk to someone about their substance use.</p>
         </div>
+        <div class="guide-card">
+          <h3>In-app guide</h3>
+          <p>A full walkthrough of every feature, built into the app itself, so help is always one tap away.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Contact ── -->
+  <section id="contact">
+    <div class="wrap">
+      <h2>Get in <span>touch</span></h2>
+      <p class="section-sub">Questions, bug reports, or feature ideas, all welcome.</p>
+
+      <div class="contact-box">
+        <p>Reach out any time at</p>
+        <a class="contact-email-link" href="mailto:odedr@doseangel.com">
+          <span>odedr@doseangel.com</span>
+          <span class="arrow">→</span>
+        </a>
       </div>
     </div>
   </section>

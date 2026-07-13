@@ -74,13 +74,13 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Unsafe',
     note: 'Stimulant crash may leave CNS depression dominant as cocaine clears; risk of sudden unconsciousness.',
   },
+  'substance-alcohol+substance-cocaine': {
+    status: 'Unsafe',
+    note: 'The liver converts ethanol and cocaine into the cardiotoxic metabolite cocaethylene, which prolongs and increases cocaine\'s effects and cardiac strain.',
+  },
 
   // ─── Caution (notable risk, use with care) ───────────────────────────────────
 
-  'substance-alcohol+substance-cocaine': {
-    status: 'Caution',
-    note: 'The liver converts ethanol and cocaine into the cardiotoxic metabolite cocaethylene, which prolongs and increases cocaine\'s effects and cardiac strain.',
-  },
   'substance-alcohol+substance-mdma': {
     status: 'Caution',
     note: 'Alcohol worsens MDMA-induced dehydration and puts additional strain on the liver. May blunt desired effects.',

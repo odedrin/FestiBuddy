@@ -8,15 +8,19 @@
 <link rel="icon" type="image/png" href="assets/doseangel-favicon.png" />
 <style>
   :root {
-    --bg:        #0d0d0f;
-    --surface:   #16181c;
-    --surface2:  #1e2126;
-    --border:    #2a2d35;
-    --text:      #e8eaf0;
-    --sub:       #7a8090;
-    --teal:      #4ecdc4;
+    --bg:        #0a120c;
+    --surface:   #12251a;
+    --surface2:  #1a2b1f;
+    --border:    #24382b;
+    --text:      #eef2ee;
+    --sub:       #8a9a8d;
+    --teal:      #fea686;
+    --grad1:     #ffe2d7;
+    --grad2:     #fea686;
+    --grad3:     #ff6229;
+    --gradient:  linear-gradient(135deg, var(--grad1), var(--grad2), var(--grad3));
     --red:       #ff6b6b;
-    --code-bg:   #111318;
+    --code-bg:   #08120b;
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -44,7 +48,7 @@
     border-bottom: 1px solid var(--border);
     position: sticky;
     top: 0;
-    background: rgba(13,13,15,0.85);
+    background: rgba(10,18,12,0.85);
     backdrop-filter: blur(8px);
     z-index: 10;
   }
@@ -65,8 +69,13 @@
     letter-spacing: -0.3px;
     color: var(--text);
   }
-  .brand img { width: 28px; height: 28px; border-radius: 7px; }
-  .brand span { color: var(--teal); }
+  .brand img { width: 28px; height: 28px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.1); }
+  .brand span {
+    background-image: var(--gradient);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
   nav.top-nav a { color: var(--sub); font-size: 14px; font-weight: 600; }
   nav.top-nav a:hover { color: var(--text); text-decoration: none; }
 
@@ -100,7 +109,7 @@
   .contact-card p { color: var(--sub); font-size: 13.5px; margin-bottom: 12px; }
   .contact-card a.email-btn {
     display: inline-block;
-    background: var(--teal);
+    background: var(--gradient);
     color: #06201d;
     font-weight: 700;
     font-size: 14px;
