@@ -66,8 +66,12 @@ export default function CheckComboScreen() {
   const isDark = colorScheme === 'dark';
   const { state } = useStopwatch();
 
+  // Nicotine is excluded from this screen entirely: DoseAngel's two data
+  // sources (TripSit, PsychonautWiki) don't publish any combination data
+  // for it, so it can't carry an interaction relationship here without
+  // fabricating one. It's still trackable elsewhere in the app.
   const substances = useMemo(
-    () => state.types.filter(t => t.isSubstance),
+    () => state.types.filter(t => t.isSubstance && t.id !== 'substance-nicotine'),
     [state.types],
   );
 
@@ -75,7 +79,7 @@ export default function CheckComboScreen() {
     ...new Set(
       state.activeStopwatches
         .map(sw => state.types.find(t => t.id === sw.typeId))
-        .filter((t): t is StopwatchType => !!t?.isSubstance)
+        .filter((t): t is StopwatchType => !!t?.isSubstance && t.id !== 'substance-nicotine')
         .map(t => t.id),
     ),
   ], [state.activeStopwatches, state.types]);
@@ -145,6 +149,9 @@ export default function CheckComboScreen() {
         <Text style={[styles.headlineTitle, { color: textColor }]}>Check a Combo</Text>
         <Text style={[styles.headlineSubtitle, { color: subColor }]}>
           Select two substances to see how they interact
+        </Text>
+        <Text style={[styles.headlineDisclaimer, { color: subColor }]}>
+          Quick reference only, not medical advice. Do your own research too. When in doubt, don't mix, start low, go slow.
         </Text>
       </View>
 
@@ -277,6 +284,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
   },
+  headlineDisclaimer: {
+    fontSize: 12,
+    fontWeight: '500',
+    lineHeight: 16,
+    marginTop: 4,
+    opacity: 0.85,
+  },
 
   gridScroll: { flex: 1 },
   gridContent: {
@@ -294,25 +308,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 13,
-    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 18,
     borderWidth: 1.5,
-    gap: 8,
+    gap: 7,
     position: 'relative',
   },
   chipDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
   },
   chipText: {
-    fontSize: 15,
+    fontSize: 13.5,
     fontWeight: '600',
   },
   chipBadge: {

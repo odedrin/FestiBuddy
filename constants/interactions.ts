@@ -39,41 +39,8 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Dangerous',
     note: 'Two CNS depressants with unpredictable synergy. High risk of respiratory failure and loss of consciousness.',
   },
-  'substance-ghb+substance-mda': {
-    status: 'Dangerous',
-    note: 'GHB combined with serotonergic stimulants raises risk of serotonin syndrome and unpredictable CNS depression.',
-  },
-  'substance-ghb+substance-mdma': {
-    status: 'Dangerous',
-    note: 'MDMA raises heart rate and temperature while GHB causes CNS depression. The opposing effects are unpredictable and can be fatal.',
-  },
-  'substance-amphetamine+substance-cocaine': {
-    status: 'Dangerous',
-    note: 'Combining two strong stimulants greatly strains the cardiovascular system and increases risk of cardiac arrest.',
-  },
-
   // ─── Unsafe (high risk of serious harm) ─────────────────────────────────────
 
-  'substance-cocaine+substance-mdma': {
-    status: 'Unsafe',
-    note: 'Both are cardiotoxic stimulants. Combined they dramatically increase heart rate and blood pressure, risking cardiac arrest.',
-  },
-  'substance-amphetamine+substance-mdma': {
-    status: 'Unsafe',
-    note: 'Excessive stimulation and serotonin release. Increases neurotoxicity risk, hyperthermia, and cardiovascular stress.',
-  },
-  'substance-cocaine+substance-mda': {
-    status: 'Unsafe',
-    note: 'Similar to cocaine + MDMA — severe cardiovascular strain and elevated neurotoxicity risk.',
-  },
-  'substance-amphetamine+substance-mda': {
-    status: 'Unsafe',
-    note: 'Combined stimulant and serotonergic load increases neurotoxicity, hyperthermia, and cardiovascular risk.',
-  },
-  'substance-cocaine+substance-ghb': {
-    status: 'Unsafe',
-    note: 'Stimulant crash may leave CNS depression dominant as cocaine clears; risk of sudden unconsciousness.',
-  },
   'substance-alcohol+substance-cocaine': {
     status: 'Unsafe',
     note: 'The liver converts ethanol and cocaine into the cardiotoxic metabolite cocaethylene, which prolongs and increases cocaine\'s effects and cardiac strain.',
@@ -87,7 +54,19 @@ const INTERACTIONS: Record<string, Interaction> = {
   },
   'substance-alcohol+substance-mda': {
     status: 'Caution',
-    note: 'Similar to alcohol + MDMA — dehydration and liver stress.',
+    note: 'Similar to alcohol + MDMA: dehydration and liver stress. PsychonautWiki also warns that stimulants can mask alcohol\'s depressant effects, raising the risk of over-intoxication once the MDA wears off. Not in TripSit\'s dataset (MDA isn\'t tracked there); rated by analogy to alcohol + MDMA, corroborated by PsychonautWiki.',
+  },
+  'substance-ghb+substance-mda': {
+    status: 'Caution',
+    note: 'GHB\'s sedation can be masked by MDA\'s stimulant effects, then hit harder as the MDA wears off, the same risk PsychonautWiki documents for MDA + alcohol. Not in TripSit\'s or PsychonautWiki\'s dataset for this exact pair; rated by analogy to GHB + MDMA.',
+  },
+  'substance-cocaine+substance-mda': {
+    status: 'Caution',
+    note: 'Two stimulants add cardiovascular strain. PsychonautWiki notes this combination "may increase strain on the heart." Not in TripSit\'s dataset (MDA isn\'t tracked there); rated by analogy to cocaine + MDMA, corroborated by PsychonautWiki.',
+  },
+  'substance-amphetamine+substance-mda': {
+    status: 'Caution',
+    note: 'Two stimulants add cardiovascular strain, similar to amphetamine + MDMA. PsychonautWiki also flags a specific risk: combining with amphetamine has been linked to mania, paranoia, and hallucinations in people coming off long-term amphetamine use. Not in TripSit\'s dataset (MDA isn\'t tracked there); rated by analogy to amphetamine + MDMA, corroborated by PsychonautWiki.',
   },
   'substance-alcohol+substance-amphetamine': {
     status: 'Caution',
@@ -97,7 +76,7 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Caution',
     note: 'Additional cardiovascular stimulation. Increased risk of anxiety, elevated heart rate, and hypertension.',
   },
-  'substance-caffeine+substance-amphetamine': {
+  'substance-amphetamine+substance-caffeine': {
     status: 'Caution',
     note: 'May cause excessive stimulation, anxiety, elevated heart rate, and sleep disruption.',
   },
@@ -105,45 +84,41 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Caution',
     note: 'Compounds cardiovascular load and dehydration. Can worsen MDMA comedown.',
   },
-  'substance-cannabis-smoked+substance-mdma': {
-    status: 'Caution',
-    note: 'Cannabis can increase anxiety and paranoia on MDMA. Some find it pleasant; others experience a difficult mental state.',
-  },
-  'substance-cannabis-edible+substance-mdma': {
-    status: 'Caution',
-    note: 'Same as smoked cannabis + MDMA but with delayed onset making dose management harder.',
-  },
-  'substance-2cb+substance-lsd': {
-    status: 'Caution',
-    note: 'Extremely intense psychedelic experience. LSD significantly potentiates 2C-B, risk of overwhelming effects.',
-  },
   'substance-2cb+substance-mescaline': {
     status: 'Caution',
     note: 'Unpredictable potentiation. Very long combined duration with risk of overwhelming effects.',
   },
-  'substance-ketamine+substance-mdma': {
+  'substance-ghb+substance-mdma': {
     status: 'Caution',
-    note: 'Dissociation combined with empathogen effects. Some experience positive "candy k-flip"; high doses risk serious disorientation.',
+    note: 'Large amounts of GHB can overwhelm MDMA\'s effects as the comedown starts, adding unpredictable sedation on top of the crash.',
   },
-  'substance-alcohol+substance-cannabis-smoked': {
+  'substance-amphetamine+substance-cocaine': {
     status: 'Caution',
-    note: 'Alcohol may intensify cannabis effects. Concurrent use can cause nausea and vomiting ("greening out").',
+    note: 'Two stimulants increase cardiovascular strain, and cocaine mildly blocks some of amphetamine\'s effects, so the added heart strain often isn\'t worth it.',
   },
-  'substance-alcohol+substance-cannabis-edible': {
+  'substance-cocaine+substance-mdma': {
     status: 'Caution',
-    note: 'Edibles have delayed onset; alcohol may cause profound over-intoxication if dose is misjudged.',
+    note: 'Cocaine blunts some of MDMA\'s desired effects while adding cardiovascular strain and heart attack risk.',
   },
-  'substance-alcohol+substance-psilocybin': {
+  'substance-amphetamine+substance-mdma': {
     status: 'Caution',
-    note: 'Alcohol may blunt or unpredictably alter the psychedelic experience and increase nausea.',
+    note: 'Two stimulants add cardiovascular strain and can increase anxiety and uncomfortable thought loops. Amphetamine may also raise MDMA\'s neurotoxicity and body temperature.',
   },
-  'substance-alcohol+substance-lsd': {
+  'substance-cocaine+substance-ghb': {
     status: 'Caution',
-    note: 'Alcohol may interfere with the experience; dehydration compounds. Some find it dampens effects, others find it destabilising.',
+    note: 'Stimulants can mask GHB\'s sedation, allowing a higher effective GHB dose than intended. If the cocaine wears off first, the GHB can hit harder than expected; if the GHB wears off first, a dangerous concentration of cocaine may remain.',
   },
-  'substance-alcohol+substance-2cb': {
+  'substance-cannabis-smoked+substance-lsd': {
     status: 'Caution',
-    note: 'Nausea risk and unpredictable alteration of psychedelic effects.',
+    note: 'Cannabis has an unexpectedly strong and somewhat unpredictable synergy with psychedelics. Start with less cannabis than usual.',
+  },
+  'substance-cannabis-edible+substance-lsd': {
+    status: 'Caution',
+    note: 'Same unpredictable synergy as smoked cannabis + LSD, plus the edible\'s delayed onset makes timing and dosing harder to judge.',
+  },
+  'substance-cannabis-smoked+substance-psilocybin': {
+    status: 'Caution',
+    note: 'Cannabis has an unexpectedly strong and somewhat unpredictable synergy with psychedelics. Start with less cannabis than usual.',
   },
 
   // ─── Low Risk & Synergy ──────────────────────────────────────────────────────
@@ -154,11 +129,11 @@ const INTERACTIONS: Record<string, Interaction> = {
   },
   'substance-mdma+substance-psilocybin': {
     status: 'Low Risk & Synergy',
-    note: 'The "hippy flip." Reported as deeply positive. Psilocybin is often taken 1–2 hours after MDMA.',
+    note: 'The "hippy flip." Reported as deeply positive. Psilocybin is often taken 1-2 hours after MDMA.',
   },
   'substance-2cb+substance-mdma': {
     status: 'Low Risk & Synergy',
-    note: 'The "nexus flip." 2C-B adds visual component to MDMA\'s empathogenic effects. Generally well-tolerated at moderate doses.',
+    note: 'The "nexus flip." 2C-B adds a visual component to MDMA\'s empathogenic effects. Generally well-tolerated at moderate doses.',
   },
   'substance-lsd+substance-psilocybin': {
     status: 'Low Risk & Synergy',
@@ -172,33 +147,56 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Low Risk & Synergy',
     note: 'Synergistic psychedelic experience. Long duration combined (10+ hours). Best for experienced users.',
   },
-  'substance-lsd+substance-2cb': {
-    status: 'Low Risk & Synergy',
-    note: 'If staggered (2C-B taken near LSD peak), generally positive with enhanced visuals. Concurrent dosing risks being overwhelming.',
-  },
   'substance-dmt+substance-mdma': {
     status: 'Low Risk & Synergy',
-    note: 'Brief psychedelic breakthrough within MDMA empathogenic state. Generally reported as safe and positive.',
-  },
-  'substance-cannabis-smoked+substance-lsd': {
-    status: 'Low Risk & Synergy',
-    note: 'Cannabis can intensify and expand LSD effects. Some enjoy the combination; others find it increases anxiety.',
-  },
-  'substance-cannabis-smoked+substance-psilocybin': {
-    status: 'Low Risk & Synergy',
-    note: 'Cannabis can deepen and extend psilocybin effects, especially during comeup and offset.',
-  },
-  'substance-cannabis-edible+substance-lsd': {
-    status: 'Low Risk & Synergy',
-    note: 'Delayed edible onset means effects peak unpredictably during the LSD experience. Use with caution re: timing.',
+    note: 'Brief psychedelic breakthrough within MDMA\'s empathogenic state. Generally reported as safe and positive.',
   },
   'substance-mda+substance-psilocybin': {
     status: 'Low Risk & Synergy',
-    note: 'Similar to hippy flip. MDA\'s longer duration pairs naturally with psilocybin.',
+    note: 'Similar to the hippy flip (MDMA + psilocybin). MDA\'s longer duration pairs naturally with psilocybin. Not in TripSit\'s or PsychonautWiki\'s combination data; rated by analogy to MDMA + psilocybin.',
   },
-  'substance-mda+substance-lsd': {
+  'substance-lsd+substance-mda': {
     status: 'Low Risk & Synergy',
-    note: 'Very long, intense experience. Both have extended peak durations; plan for 10+ hours.',
+    note: 'Very long, intense experience. Both have extended peak durations; plan for 10+ hours. Not in TripSit\'s or PsychonautWiki\'s combination data; rated by analogy to MDMA + LSD.',
+  },
+  'substance-2cb+substance-lsd': {
+    status: 'Low Risk & Synergy',
+    note: 'If staggered (2C-B taken near LSD peak), generally positive with enhanced visuals. Concurrent dosing can be very intense, especially at high doses.',
+  },
+  'substance-cannabis-smoked+substance-mdma': {
+    status: 'Low Risk & Synergy',
+    note: 'Large amounts of cannabis can make the MDMA experience stronger and less predictable. Best saved for later in the experience rather than combined from the start.',
+  },
+  'substance-cannabis-edible+substance-mdma': {
+    status: 'Low Risk & Synergy',
+    note: 'Same as smoked cannabis + MDMA, with the edible\'s delayed onset adding some unpredictability to timing.',
+  },
+  'substance-ketamine+substance-mdma': {
+    status: 'Low Risk & Synergy',
+    note: 'No unexpected interactions at sensible doses, though blood pressure may rise. Moving around at high combined doses raises injury risk due to ketamine\'s dissociation.',
+  },
+  'substance-alcohol+substance-cannabis-smoked': {
+    status: 'Low Risk & Synergy',
+    note: 'In excess this combination can cause nausea and vomiting ("greening out"), but at moderate doses it\'s low risk.',
+  },
+  'substance-alcohol+substance-cannabis-edible': {
+    status: 'Low Risk & Synergy',
+    note: 'Same as alcohol + smoked cannabis, though the edible\'s delayed onset makes it easier to misjudge how much alcohol you\'ve layered on top.',
+  },
+
+  // ─── Low Risk & Decrease ─────────────────────────────────────────────────────
+
+  'substance-alcohol+substance-psilocybin': {
+    status: 'Low Risk & Decrease',
+    note: 'Alcohol tends to blunt and shorten the psilocybin experience rather than add risk. May still increase nausea.',
+  },
+  'substance-alcohol+substance-lsd': {
+    status: 'Low Risk & Decrease',
+    note: 'Alcohol tends to blunt and shorten the LSD experience rather than add risk.',
+  },
+  'substance-2cb+substance-alcohol': {
+    status: 'Low Risk & Decrease',
+    note: 'Alcohol tends to blunt and shorten the 2C-B experience rather than add risk.',
   },
 
   // ─── Low Risk & No Synergy ────────────────────────────────────────────────────
@@ -214,26 +212,6 @@ const INTERACTIONS: Record<string, Interaction> = {
   'substance-caffeine+substance-cannabis-smoked': {
     status: 'Low Risk & No Synergy',
     note: 'Common combination. May slightly increase anxiety and heart rate in some individuals.',
-  },
-  'substance-nicotine+substance-mdma': {
-    status: 'Low Risk & No Synergy',
-    note: 'Nicotine adds modest cardiovascular load on top of MDMA. Very common in practice; risk is minimal at normal doses.',
-  },
-  'substance-nicotine+substance-lsd': {
-    status: 'Low Risk & No Synergy',
-    note: 'Tobacco is commonly smoked during psychedelic experiences. Minimal pharmacological interaction.',
-  },
-  'substance-caffeine+substance-nicotine': {
-    status: 'Low Risk & No Synergy',
-    note: 'Additive stimulation. Very common everyday combination with low additional risk.',
-  },
-  'substance-nicotine+substance-psilocybin': {
-    status: 'Low Risk & No Synergy',
-    note: 'Common in practice. Minimal pharmacological interaction.',
-  },
-  'substance-nicotine+substance-cocaine': {
-    status: 'Low Risk & No Synergy',
-    note: 'Both are stimulants with some additive cardiovascular effect, but no significant synergy.',
   },
 };
 
