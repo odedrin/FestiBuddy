@@ -268,6 +268,40 @@ export const SUBSTANCE_TYPES: StopwatchType[] = [
     isBuiltIn: true,
     isSubstance: true,
   },
+  {
+    id: 'substance-3mmc',
+    name: '3-MMC',
+    color: '#F1C40F',
+    // Oral. Onset: 10–30 min | Comeup: 30–60 min | Peak: 2–3h | Offset: 1–1.5h
+    onsetDuration: 20 * MIN,
+    comeupDuration: 45 * MIN,
+    peakDuration: 150 * MIN,
+    offsetDuration: 75 * MIN,
+    peakValue: 100,
+    onsetEndFraction: 0.2,
+    onsetShape: 'easeOut',
+    comeupShape: 'sigmoid',
+    offsetShape: 'easeIn',
+    isBuiltIn: true,
+    isSubstance: true,
+  },
+  {
+    id: 'substance-4mmc',
+    name: 'Mephedrone (4-MMC)',
+    color: '#D4AC0D',
+    // Oral. Onset: 15–45 min | Comeup: 15–30 min | Peak: 2–4h | Offset: 45–90 min
+    onsetDuration: 30 * MIN,
+    comeupDuration: 22 * MIN,
+    peakDuration: 180 * MIN,
+    offsetDuration: 67 * MIN,
+    peakValue: 100,
+    onsetEndFraction: 0.2,
+    onsetShape: 'easeOut',
+    comeupShape: 'sigmoid',
+    offsetShape: 'easeIn',
+    isBuiltIn: true,
+    isSubstance: true,
+  },
 
   // ─── Cannabis ──────────────────────────────────────────────────────────────
 

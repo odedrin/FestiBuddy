@@ -39,6 +39,22 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Dangerous',
     note: 'Two CNS depressants with unpredictable synergy. High risk of respiratory failure and loss of consciousness.',
   },
+  'substance-4mmc+substance-mdma': {
+    status: 'Dangerous',
+    note: 'Both raise serotonin levels sharply, risking serotonin syndrome. Also adds cardiovascular strain and neurotoxicity risk. Sourced from TripSit\'s mephedrone + MDMA data.',
+  },
+  'substance-3mmc+substance-mdma': {
+    status: 'Dangerous',
+    note: 'Serotonin syndrome risk from both substances raising serotonin sharply. Not in TripSit\'s dataset for this exact pair; rated by analogy to 4-MMC + MDMA, since 3-MMC is pharmacologically near-identical to 4-MMC and cross-tolerant with it per PsychonautWiki.',
+  },
+  'substance-4mmc+substance-mda': {
+    status: 'Dangerous',
+    note: 'Serotonin syndrome risk, same mechanism as 4-MMC + MDMA above. Not in TripSit\'s dataset for this exact pair; rated by analogy, given MDA\'s pharmacological similarity to MDMA.',
+  },
+  'substance-3mmc+substance-mda': {
+    status: 'Dangerous',
+    note: 'Serotonin syndrome risk, same mechanism as 4-MMC + MDMA. Not in TripSit\'s dataset for this pair; rated by analogy to 4-MMC + MDMA and MDA\'s similarity to MDMA.',
+  },
   // ─── Unsafe (high risk of serious harm) ─────────────────────────────────────
 
   'substance-alcohol+substance-cocaine': {
@@ -120,6 +136,58 @@ const INTERACTIONS: Record<string, Interaction> = {
     status: 'Caution',
     note: 'Cannabis has an unexpectedly strong and somewhat unpredictable synergy with psychedelics. Start with less cannabis than usual.',
   },
+  'substance-3mmc+substance-4mmc': {
+    status: 'Caution',
+    note: 'Same chemical class (cathinones) with overlapping mechanisms and cross-tolerance per PsychonautWiki. Stacking adds cumulative cardiovascular and serotonergic load without clear added benefit.',
+  },
+  'substance-4mmc+substance-caffeine': {
+    status: 'Caution',
+    note: 'Additional cardiovascular stimulation; may increase anxiety and physical discomfort. Sourced from TripSit\'s mephedrone + caffeine data.',
+  },
+  'substance-3mmc+substance-caffeine': {
+    status: 'Caution',
+    note: 'Additional cardiovascular stimulation and risk of anxiety. Mirrors TripSit\'s 4-MMC + caffeine rating, since 3-MMC shares the same mechanism.',
+  },
+  'substance-4mmc+substance-ghb': {
+    status: 'Caution',
+    note: 'Stimulant effects can mask GHB\'s sedation, risking a higher effective dose than intended; if the mephedrone wears off first, the GHB may hit harder than expected. Sourced from TripSit\'s mephedrone + GHB/GBL data.',
+  },
+  'substance-3mmc+substance-ghb': {
+    status: 'Caution',
+    note: 'Stimulant effects can mask GHB\'s sedation, risking a higher effective dose than intended. Mirrors TripSit\'s 4-MMC + GHB rating, since 3-MMC shares the same mechanism.',
+  },
+  'substance-4mmc+substance-lsd': {
+    status: 'Caution',
+    note: 'Stimulant effects increase anxiety and thought-loop risk during a psychedelic experience, plus added cardiovascular strain. Sourced from TripSit\'s mephedrone + LSD data.',
+  },
+  'substance-3mmc+substance-lsd': {
+    status: 'Caution',
+    note: 'Stimulant effects increase anxiety and thought-loop risk during a psychedelic experience, plus added cardiovascular strain. Mirrors TripSit\'s 4-MMC + LSD rating.',
+  },
+  'substance-4mmc+substance-alcohol': {
+    status: 'Caution',
+    note: 'Stimulant effects can mask alcohol\'s sedation, raising the risk of underestimating intoxication, similar to alcohol + amphetamine. Not in TripSit\'s dataset for this pair; rated by analogy.',
+  },
+  'substance-3mmc+substance-alcohol': {
+    status: 'Caution',
+    note: 'Stimulant effects can mask alcohol\'s sedation, raising the risk of underestimating intoxication. Not in TripSit\'s dataset for this pair; rated by analogy to alcohol + amphetamine.',
+  },
+  'substance-4mmc+substance-cocaine': {
+    status: 'Caution',
+    note: 'Two stimulants add cardiovascular strain. Not in TripSit\'s dataset for this pair; rated by analogy to amphetamine + cocaine.',
+  },
+  'substance-3mmc+substance-cocaine': {
+    status: 'Caution',
+    note: 'Two stimulants add cardiovascular strain. Not in TripSit\'s dataset for this pair; rated by analogy to amphetamine + cocaine.',
+  },
+  'substance-4mmc+substance-amphetamine': {
+    status: 'Caution',
+    note: 'Two stimulants add cardiovascular strain. PsychonautWiki notes cross-tolerance between mephedrone and other dopaminergic stimulants. Not in TripSit\'s dataset for this pair; rated by analogy to amphetamine + cocaine.',
+  },
+  'substance-3mmc+substance-amphetamine': {
+    status: 'Caution',
+    note: 'Two stimulants add cardiovascular strain, with cross-tolerance between dopaminergic stimulants per PsychonautWiki. Not in TripSit\'s dataset for this pair; rated by analogy to amphetamine + cocaine.',
+  },
 
   // ─── Low Risk & Synergy ──────────────────────────────────────────────────────
 
@@ -182,6 +250,22 @@ const INTERACTIONS: Record<string, Interaction> = {
   'substance-alcohol+substance-cannabis-edible': {
     status: 'Low Risk & Synergy',
     note: 'Same as alcohol + smoked cannabis, though the edible\'s delayed onset makes it easier to misjudge how much alcohol you\'ve layered on top.',
+  },
+  'substance-4mmc+substance-dmt': {
+    status: 'Low Risk & Synergy',
+    note: 'Brief psychedelic breakthrough within mephedrone\'s stimulant-entactogen state. Sourced from TripSit\'s mephedrone + DMT data.',
+  },
+  'substance-3mmc+substance-dmt': {
+    status: 'Low Risk & Synergy',
+    note: 'Brief psychedelic breakthrough within a stimulant-entactogen state. Mirrors TripSit\'s 4-MMC + DMT rating.',
+  },
+  'substance-4mmc+substance-psilocybin': {
+    status: 'Low Risk & Synergy',
+    note: 'Similar to the hippy flip (MDMA + psilocybin). Sourced from TripSit\'s mephedrone + psilocybin (mushrooms) data.',
+  },
+  'substance-3mmc+substance-psilocybin': {
+    status: 'Low Risk & Synergy',
+    note: 'Similar to the hippy flip (MDMA + psilocybin). Mirrors TripSit\'s 4-MMC + psilocybin rating.',
   },
 
   // ─── Low Risk & Decrease ─────────────────────────────────────────────────────

@@ -37,11 +37,15 @@ function TypeRow({
   isDark,
   onStart,
   warningStatus,
+  isFavorite,
+  onToggleFavorite,
 }: {
   item: StopwatchType;
   isDark: boolean;
   onStart: (type: StopwatchType) => void;
   warningStatus?: InteractionStatus;
+  isFavorite: boolean;
+  onToggleFavorite: (typeId: string) => void;
 }) {
   const textColor    = isDark ? '#ECEDEE' : '#11181C';
   const subColor     = isDark ? '#9BA1A6' : '#687076';
@@ -58,6 +62,15 @@ function TypeRow({
           {formatDuration(totalDuration(item))}
         </Text>
       </View>
+      <TouchableOpacity
+        onPress={() => onToggleFavorite(item.id)}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        style={styles.starBtn}
+      >
+        <Text style={[styles.star, { color: isFavorite ? '#FFD700' : subColor }]}>
+          {isFavorite ? '★' : '☆'}
+        </Text>
+      </TouchableOpacity>
       {warningColor && (
         <View style={[styles.warningBadge, { backgroundColor: warningColor + '22', borderColor: warningColor }]}>
           <Text style={[styles.warningText, { color: warningColor }]}>
@@ -87,7 +100,7 @@ function TypeRow({
 }
 
 export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
-  const { state } = useStopwatch();
+  const { state, toggleFavorite } = useStopwatch();
   const { handleStart, pendingType, warningPairs, onConfirm, onCancel } =
     useInteractionGuard();
 
@@ -182,6 +195,8 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
               isDark={isDark}
               onStart={handleTypeStart}
               warningStatus={state.showInteractionBadges ? warningMap.get(item.id) : undefined}
+              isFavorite={favIds.has(item.id)}
+              onToggleFavorite={toggleFavorite}
             />
           )}
         />
@@ -265,6 +280,12 @@ const styles = StyleSheet.create({
   rowMeta: {
     fontSize: 12,
     marginTop: 1,
+  },
+  starBtn: {
+    padding: 2,
+  },
+  star: {
+    fontSize: 18,
   },
   warningBadge: {
     paddingHorizontal: 6,
