@@ -190,6 +190,17 @@ export function phaseRemainingMs(type: StopwatchType, elapsedMs: number): number
   return 0;                                      // done
 }
 
+/**
+ * Milliseconds remaining until the peak phase begins (i.e. until onset +
+ * comeup have elapsed). Returns 0 once peak has started or passed.
+ * Used to warn when redosing a substance that hasn't peaked yet.
+ */
+export function msUntilPeak(type: StopwatchType, elapsedMs: number): number {
+  const t2 = type.onsetDuration + type.comeupDuration;
+  if (elapsedMs <= 0) return t2;
+  return Math.max(0, t2 - elapsedMs);
+}
+
 /** Format milliseconds as a human-readable duration string, e.g. "1h 20m" */
 export function formatDuration(ms: number): string {
   const totalMinutes = Math.round(ms / 60_000);

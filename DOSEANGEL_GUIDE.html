@@ -395,7 +395,7 @@
       <li><a href="#plan-mode">4.2 Plan</a></li>
       <li><a href="#combos">4.3 Combos</a></li>
       <li><a href="#substances">4.4 Substances</a></li>
-      <li><a href="#interactions">4.5 Drug Interactions</a></li>
+      <li><a href="#interactions">4.5 Drug Interactions &amp; Redose Warnings</a></li>
       <li><a href="#settings">4.6 Settings</a></li>
       <li class="section"><a href="#plans">Deep Dives</a></li>
       <li><a href="#plans">5. Working with Plans</a></li>
@@ -575,13 +575,13 @@
 
       <h3>Substance types</h3>
       <p>A third category — <strong>substance types</strong> — ships bundled with the app. These are read-only profiles derived from PsychonautWiki pharmacokinetic data (oral ROA midpoints unless otherwise noted). They behave like built-in types in that they cannot be deleted or edited, but they are displayed separately under a <strong>Substances</strong> section in both the Substances Library (Settings → Manage) and the Add Stopwatch sheet.</p>
-      <p>The 16 bundled substances are:</p>
+      <p>The 18 bundled substances are:</p>
       <ul>
         <li><strong>Empathogens:</strong> MDMA, MDA</li>
         <li><strong>Psychedelics:</strong> LSD, Psilocybin, 2C-B, Mescaline, DMT (smoked)</li>
         <li><strong>Dissociatives:</strong> Ketamine</li>
         <li><strong>Depressants:</strong> Alcohol (1 drink), GHB</li>
-        <li><strong>Stimulants:</strong> Cocaine, Amphetamine, Caffeine, Nicotine (smoked)</li>
+        <li><strong>Stimulants:</strong> Cocaine, Amphetamine, Caffeine, Nicotine (smoked), 3-MMC, Mephedrone (4-MMC)</li>
         <li><strong>Cannabis:</strong> Cannabis (smoked), Cannabis (edible)</li>
       </ul>
       <p>Substance types are never stored in AsyncStorage — they are always merged from code at hydration time so that bundled data updates automatically when the app is updated.</p>
@@ -708,7 +708,7 @@
       <p>This is deliberately its own tab rather than a page tucked inside Settings or a searchable list of every pair: it's the app's harm-reduction reference of record, so it needs to stay one tap away regardless of what else is going on.</p>
 
       <h4>Picking a combination</h4>
-      <p>All 16 bundled substances appear as a wrapped grid of chips, each tinted with the substance's own color. The flow:</p>
+      <p>All 18 bundled substances appear as a wrapped grid of chips, each tinted with the substance's own color. The flow:</p>
       <ol>
         <li>Tap a substance to select it — its chip fills solid. Every other substance with known interaction data against it gets a small corner badge, using the same icon set as elsewhere (<strong>⚠</strong> Dangerous/Unsafe/Caution, <strong>↑</strong> Synergy, <strong>↓</strong> Decrease, <strong>▲</strong> No Synergy), so you can see at a glance which second pick will actually show something.</li>
         <li>Tap a second substance. Both chips highlight, and an <strong>explanation card</strong> pinned to the bottom of the screen shows the severity badge, both substance names (each with a <strong>ⓘ</strong> link to PsychonautWiki), and the full clinical note. If no data exists for that specific pair, the card instead reads <strong>"No documented interaction"</strong> with a reminder that this doesn't mean the combination is safe.</li>
@@ -724,7 +724,7 @@
     <!-- ── 4.4 Substances ── -->
     <section id="substances">
       <h2><span class="sec-num">4.4</span> Substance Database</h2>
-      <p>The Substances Library (in Settings) has a third section — <strong>Substances</strong> — showing the 16 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
+      <p>The Substances Library (in Settings) has a third section — <strong>Substances</strong> — showing the 18 read-only profiles bundled with the app. These cannot be edited or deleted, but you can copy one via <strong>Customize</strong> to create an editable variant.</p>
 
       <h4>PK data quality</h4>
       <p>All durations are population midpoints sourced from <strong>PsychonautWiki</strong> and cross-referenced with TripSit. They represent typical oral ROA timings (exceptions: DMT is smoked, Ketamine is intranasal, Cocaine is insufflated, Nicotine is smoked, Cannabis smoked vs. edible are separate profiles). Individual responses vary significantly with dose, bodyweight, tolerance, and metabolism.</p>
@@ -732,29 +732,31 @@
       <table>
         <thead><tr><th>Substance</th><th>Total duration (approx.)</th><th>Notes</th></tr></thead>
         <tbody>
-          <tr><td>MDMA</td><td>4.4h</td><td>Oral; empathogenic peak ~1.75h</td></tr>
-          <tr><td>MDA</td><td>6.9h</td><td>Oral; longer and more psychedelic than MDMA</td></tr>
-          <tr><td>LSD</td><td>11.8h</td><td>Oral; very long peak plateau</td></tr>
-          <tr><td>Psilocybin</td><td>5.6h</td><td>Oral; classic psychedelic arc</td></tr>
-          <tr><td>2C-B</td><td>5.4h</td><td>Oral; visual psychedelic</td></tr>
-          <tr><td>Mescaline</td><td>12h</td><td>Oral; slowest onset of the psychedelics</td></tr>
-          <tr><td>DMT (smoked)</td><td>22 min</td><td>Inhaled; very short, intense</td></tr>
-          <tr><td>Ketamine</td><td>2h</td><td>Intranasal; dissociative</td></tr>
-          <tr><td>Alcohol (1 drink)</td><td>2.5h</td><td>Oral; single-standard-drink model</td></tr>
-          <tr><td>GHB</td><td>3.5h</td><td>Oral; steep onset, abrupt offset</td></tr>
-          <tr><td>Cocaine</td><td>1.5h</td><td>Insufflated; sharp peak, fast comedown</td></tr>
-          <tr><td>Amphetamine</td><td>8.5h</td><td>Oral; long stimulant duration</td></tr>
-          <tr><td>Caffeine</td><td>7h</td><td>Oral; gentle rise, long plateau</td></tr>
-          <tr><td>Nicotine (smoked)</td><td>1.3h</td><td>Inhaled; rapid onset and short duration</td></tr>
-          <tr><td>Cannabis (smoked)</td><td>2.8h</td><td>Inhaled; fast onset</td></tr>
-          <tr><td>Cannabis (edible)</td><td>6.5h</td><td>Oral; delayed and prolonged onset</td></tr>
+          <tr><td>MDMA</td><td>4.2h</td><td>Oral; empathogenic peak ~2h</td></tr>
+          <tr><td>MDA</td><td>7.3h</td><td>Oral; longer and more psychedelic than MDMA</td></tr>
+          <tr><td>LSD</td><td>9.5h</td><td>Sublingual (PW's ROA for blotter); very long peak plateau</td></tr>
+          <tr><td>Psilocybin</td><td>7h</td><td>Oral; classic psychedelic arc</td></tr>
+          <tr><td>2C-B</td><td>6h</td><td>Oral; visual psychedelic</td></tr>
+          <tr><td>Mescaline</td><td>10.1h</td><td>Oral; slowest onset of the psychedelics</td></tr>
+          <tr><td>DMT (smoked)</td><td>11 min</td><td>Inhaled; very short, intense</td></tr>
+          <tr><td>Ketamine</td><td>1.5h</td><td>Insufflated; dissociative</td></tr>
+          <tr><td>Alcohol (1 drink)</td><td>2.9h</td><td>Oral; single-standard-drink model</td></tr>
+          <tr><td>GHB</td><td>2h</td><td>Oral; steep onset, abrupt offset</td></tr>
+          <tr><td>Cocaine</td><td>0.7h</td><td>Insufflated; sharp peak, fast comedown</td></tr>
+          <tr><td>Amphetamine</td><td>7.7h</td><td>Oral; long stimulant duration</td></tr>
+          <tr><td>Caffeine</td><td>10.2h</td><td>Oral; gentle rise, long plateau (reflects ~5h elimination half-life)</td></tr>
+          <tr><td>Nicotine (smoked)</td><td>1.6h</td><td>Inhaled; rapid onset and short duration</td></tr>
+          <tr><td>3-MMC</td><td>4.8h</td><td>Oral; stimulant-entactogen</td></tr>
+          <tr><td>Mephedrone (4-MMC)</td><td>5h</td><td>Oral; stimulant-entactogen</td></tr>
+          <tr><td>Cannabis (smoked)</td><td>4.2h</td><td>Inhaled; fast onset</td></tr>
+          <tr><td>Cannabis (edible)</td><td>7.9h</td><td>Oral; delayed and prolonged onset</td></tr>
         </tbody>
       </table>
     </section>
 
-    <!-- ── 4.5 Drug Interactions ── -->
+    <!-- ── 4.5 Drug Interactions & Redose Warnings ── -->
     <section id="interactions">
-      <h2><span class="sec-num">4.5</span> Drug Interactions</h2>
+      <h2><span class="sec-num">4.5</span> Drug Interactions &amp; Redose Warnings</h2>
       <p>DoseAngel bundles a curated interaction database based on <strong>TripSit combos data</strong>, covering approximately 35 substance pairs. When you combine substances that have a known interaction, DoseAngel warns you before you commit — either at stopwatch start or plan entry add. To browse or look up a combination directly, see the <strong>Combos</strong> tab (§4.3).</p>
 
       <h4>Severity levels</h4>
@@ -782,7 +784,11 @@
       <p>The popup only fires for <strong>Caution, Unsafe, and Dangerous</strong> interactions. Low Risk combinations (Synergy, Decrease, No Synergy) are intentionally excluded — they still appear as badges in the type list, but never block you with a popup.</p>
       <p>The popup only appears when <strong>Warning Popups</strong> is enabled in Settings (on by default). A separate <strong>Interaction Badges</strong> toggle controls the badges shown in the type list before you tap Start — the two settings are independent so you can show badges without popups, or vice versa.</p>
 
-      <div class="callout">Interaction data covers substance-to-substance risks only between the 16 bundled profiles. Interactions with unlisted substances or user-created custom types are not checked.</div>
+      <div class="callout">Interaction data covers substance-to-substance risks only between the 18 bundled profiles. Interactions with unlisted substances or user-created custom types are not checked.</div>
+
+      <h4>Redose warning</h4>
+      <p>A separate, unrelated check: when you tap <strong>▶ Start</strong> (from the Add Stopwatch sheet or a type card) on a type that already has an active instance which hasn't reached its <strong>peak</strong> phase yet (still in onset or comeup), a blocking modal appears showing the type name and how long until that active instance peaks. Two buttons: <strong>Cancel</strong> and <strong>Redose anyway</strong>.</p>
+      <p>This is distinct from the interaction warning above: it isn't about drug-drug interactions or TripSit data, it's a timing nudge about redosing the same thing on top of itself before its first dose has fully come up. It applies to <strong>any</strong> type, not just the 18 bundled substances, since it depends only on the type's own curve shape, not the interaction database. Controlled by its own <strong>Redose Warnings</strong> toggle in Settings (on by default), independent of <strong>Warning Popups</strong>. If both an interaction warning and a redose warning would apply to the same action, the interaction warning takes priority and is shown instead.</p>
     </section>
 
     <!-- ── 4.6 Settings ── -->
@@ -799,6 +805,7 @@
       <ul>
         <li><strong>Interaction Badges</strong> — toggle (on by default). When enabled, a colored badge appears next to any substance in the Add Stopwatch or Add Plan Entry sheet when that substance has a known interaction with a currently active stopwatch or existing plan entry. The badge icon reflects the interaction type: <strong>⚠</strong> Dangerous/Unsafe/Caution, <strong>↑</strong> Low Risk &amp; Synergy, <strong>↓</strong> Low Risk &amp; Decrease, <strong>▲</strong> Low Risk &amp; No Synergy. When a substance has multiple simultaneous interactions, the most important one is shown (Synergy takes priority over Decrease, which takes priority over No Synergy). Disable to hide all badges while keeping warning popups active.</li>
         <li><strong>Warning Popups</strong> — toggle (on by default). When enabled, a blocking confirmation modal appears before starting a substance stopwatch or adding a plan entry that creates a known interaction. Also controls the persistent Interactions panel at the bottom of the Plan screen. Disable to proceed silently without any blocking dialog.</li>
+        <li><strong>Redose Warnings</strong> — toggle (on by default). When enabled, a blocking confirmation modal appears before starting a type that already has an active instance still short of its peak phase. Independent of Warning Popups; applies to any type, not just substances. See §4.5.</li>
       </ul>
 
       <h4>Substances Library</h4>
@@ -807,7 +814,7 @@
       <p>Expanded sections, in order: <strong>Custom</strong> (your types, shown first), <strong>Built-in</strong> (the two presets), and <strong>Substances</strong>. Types you've hidden appear in a nested, non-sticky collapsible <strong>Hidden</strong> section at the bottom — independent of the outer sticky toggle.</p>
       <p><strong>Type cards.</strong> Each card shows the type name, a mini sparkline curve preview, total duration, a four-phase breakdown table (duration and proportion per phase), and a segmented proportion bar. Action buttons:</p>
       <ul>
-        <li><strong>▶ Start</strong> — starts an instance directly from here. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first.</li>
+        <li><strong>▶ Start</strong> — starts an instance directly from here. Triggers a haptic tap on confirmation. If the type is a substance and interaction warnings are enabled, an interaction check runs first; if redose warnings are enabled, a redose check runs too (see §4.5).</li>
         <li><strong>Customize / Edit</strong> — opens the type editor</li>
         <li><strong>Hide</strong> — moves the type card to the collapsible Hidden section. The type still works normally; it just de-clutters the main list.</li>
         <li><strong>✕</strong> — deletes the type (custom only; confirmation required)</li>
@@ -827,7 +834,7 @@
       <ul>
         <li><strong>PK data source — PsychonautWiki ↗</strong> — opens <code>https://psychonautwiki.org</code></li>
         <li><strong>Interaction data — TripSit combos ↗</strong> — opens <code>https://tripsit.me</code></li>
-        <li><strong>Substances</strong> — 16 bundled profiles</li>
+        <li><strong>Substances</strong> — 18 bundled profiles</li>
         <li><strong>Privacy &amp; disclosure — View ↗</strong> — opens the Disclosure screen (see below)</li>
       </ul>
 
@@ -956,6 +963,7 @@
 <span class="file">├── PlanEntryEditor.tsx        </span><span class="comment">— Shared editor UI for plan entry timing (all three anchor modes)</span>
 <span class="file">├── TimePickers.tsx            </span><span class="comment">— HH:MM clock picker and minute-adjustment controls</span>
 <span class="file">├── InteractionWarningModal.tsx</span><span class="comment">— Blocking popup for drug interaction warnings (start / add flows). Accepts <code>modal?: boolean</code> for the same nested-overlay use case</span>
+<span class="file">├── RedoseWarningModal.tsx     </span><span class="comment">— Blocking popup shown when starting a type that's already active and hasn't peaked yet. Accepts <code>modal?: boolean</code> for the same nested-overlay use case</span>
 <span class="file">└── InteractionWarnings.tsx    </span><span class="comment">— Persistent warnings panel (rendered in Plan Mode)</span>
 
 <span class="dir">engine/</span>
@@ -974,7 +982,7 @@
 
 <span class="dir">constants/</span>
 <span class="file">├── defaultTypes.ts      </span><span class="comment">— Built-in types + color palette</span>
-<span class="file">├── substanceDB.ts       </span><span class="comment">— 16 bundled substance types (PK data from PsychonautWiki)</span>
+<span class="file">├── substanceDB.ts       </span><span class="comment">— 18 bundled substance types (PK data from PsychonautWiki)</span>
 <span class="file">├── interactions.ts      </span><span class="comment">— TripSit-based interaction pairs; getActiveInteractions, INTERACTION_COLOR, INTERACTION_SEVERITY</span>
 <span class="file">└── theme.ts             </span><span class="comment">— Color tokens</span>
       </div>
@@ -988,6 +996,7 @@
   plans:                   Plan[];                 // saved plans
   showInteractionWarnings: boolean;                // toggle for blocking warning popups (default: true)
   showInteractionBadges:   boolean;                // toggle for ⚠ badges in type lists (default: true)
+  showRedoseWarnings:      boolean;                // toggle for redose-before-peak warning popups (default: true)
   planOverlayMode:         'markers' | 'curves';  // how toggled-on plans appear on the Live screen
 }</code></pre>
       <div class="callout">State is persisted to <strong>AsyncStorage</strong> on every change and rehydrated on launch. Built-in types (<code>isBuiltIn: true</code>) and substance types (<code>isSubstance: true</code>) are always restored from code at hydration and are never saved to AsyncStorage — only custom types are merged from storage. This means bundled data updates automatically when the app version is updated.</div>
@@ -1156,7 +1165,7 @@ interface PlanMarker {
         </div>
         <div class="roadmap-item">
           <strong>Redosing frequency warnings</strong>
-          <p>Warn when the same substance is being redosed unusually often or too many times, independent of the pairwise interaction checker. This targets tolerance buildup and cumulative toxicity risk from repeated dosing of a single substance, rather than combinations between different substances. Thresholds and exact framing (per-session count, minimum interval, rolling time window) still to be defined.</p>
+          <p>Warn when the same substance is being redosed unusually often or too many times, independent of the pairwise interaction checker. This targets tolerance buildup and cumulative toxicity risk from repeated dosing of a single substance, rather than combinations between different substances. Thresholds and exact framing (per-session count, minimum interval, rolling time window) still to be defined. Distinct from the shipped redose-before-peak check (§4.5): this would track dosing frequency over a whole session, not just whether the immediately prior dose has peaked.</p>
         </div>
         <div class="roadmap-item">
           <strong>Add mephedrone (3-MMC / 4-MMC) as a built-in substance</strong>

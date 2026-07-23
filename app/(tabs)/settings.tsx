@@ -28,7 +28,7 @@ const SCHEME_OPTIONS: { label: string; value: ColorSchemePreference }[] = [
 export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const isDark = colorScheme === 'dark';
-  const { state, toggleInteractionWarnings, toggleInteractionBadges, setPlanOverlayMode } = useStopwatch();
+  const { state, toggleInteractionWarnings, toggleInteractionBadges, toggleRedoseWarnings, setPlanOverlayMode } = useStopwatch();
   const { colorSchemePreference, setColorScheme } = useColorSchemePreference();
   const [disclosureVisible, setDisclosureVisible] = useState(false);
   const [typesExpanded, setTypesExpanded] = useState(false);
@@ -120,7 +120,7 @@ export default function SettingsScreen() {
             thumbColor="#fff"
           />
         </View>
-        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+        <View style={[styles.row, { borderBottomColor: sepColor }]}>
           <View style={styles.rowText}>
             <Text style={[styles.rowTitle, { color: textColor }]}>Warning Popups</Text>
             <Text style={[styles.rowSub, { color: subColor }]}>
@@ -130,6 +130,20 @@ export default function SettingsScreen() {
           <Switch
             value={state.showInteractionWarnings}
             onValueChange={toggleInteractionWarnings}
+            trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
+            thumbColor="#fff"
+          />
+        </View>
+        <View style={[styles.row, { borderBottomWidth: 0 }]}>
+          <View style={styles.rowText}>
+            <Text style={[styles.rowTitle, { color: textColor }]}>Redose Warnings</Text>
+            <Text style={[styles.rowSub, { color: subColor }]}>
+              Show a confirmation dialog when starting a type that's already active and hasn't peaked yet.
+            </Text>
+          </View>
+          <Switch
+            value={state.showRedoseWarnings}
+            onValueChange={toggleRedoseWarnings}
             trackColor={{ false: isDark ? '#3a3a3c' : '#E5E5EA', true: '#30D158' }}
             thumbColor="#fff"
           />
@@ -243,7 +257,7 @@ export default function SettingsScreen() {
         <View style={[styles.sep, { backgroundColor: sepColor }]} />
         <View style={styles.infoRow}>
           <Text style={[styles.infoLabel, { color: subColor }]}>Substances</Text>
-          <Text style={[styles.infoValue, { color: textColor }]}>16 bundled</Text>
+          <Text style={[styles.infoValue, { color: textColor }]}>18 bundled</Text>
         </View>
         <View style={[styles.sep, { backgroundColor: sepColor }]} />
         <TouchableOpacity

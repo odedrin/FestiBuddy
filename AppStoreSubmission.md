@@ -25,32 +25,34 @@ harm reduction,interaction checker,trip planner,dose timer,pharmacokinetics,drug
 
 ## Description (4000 char max)
 
+This is what was actually submitted to App Store Connect (supersedes the earlier draft below it in git history).
+
 ```
-DoseAngel helps you plan and track how substances affect you over time, so you can avoid dangerous combinations, prevent unintentional re-dosing, and know what to expect next.
+DoseAngel is a free, non-commercial harm reduction tool built for the community, that helps you plan ahead and keep track of where you are in your trip.
 
-HOW IT WORKS
-Every substance is modeled as a curve: onset, comeup, peak, and offset. When you're tracking more than one at a time, DoseAngel sums the curves in real time and shows you the combined effect: not a guess, but a deterministic projection based on the timing you enter.
+Most risky decisions happen while under the influence, when it's hard to track time or know if you're rising, at peak, or coming down. DoseAngel helps you plan ahead, see what's active in your system, and understand your current state before you consider redosing, significantly reducing the risk of overdose or dangerous combinations.
 
-KEY FEATURES
+Key features:
 
-Live tracking: Start a timer the moment you take something. Watch a live graph of your current and predicted effect level, with a clear "now" marker splitting what already happened from what's projected next.
+Plan ahead: map out your doses before you start and see predicted peak and comedown times, so you know roughly what to expect
 
-Plan mode: Preview a whole evening before it starts. Stage multiple entries, adjust their timing, and see the combined curve without starting anything for real.
+Live state tracking: a real time graph shows what's active in your system right now, including what stage you're in, coming up, at peak, or coming down
 
-Interaction awareness: DoseAngel includes a curated interaction reference (sourced from TripSit combination data) covering commonly co-used substances. When you add something that has a known interaction with what's already active, you get a warning before you confirm, with a severity level and a plain-language explanation.
+Combination checker: look up any two substances to see documented interaction risk before you combine them
 
-Fully customizable: Two built-in timing profiles cover common patterns, and a library of pharmacokinetic reference profiles (sourced from PsychonautWiki population data) covers many commonly discussed substances. Every profile can be duplicated and adjusted, or you can build your own from scratch or anything else with a known onset/peak/offset pattern.
+Risky combination warnings: get an automatic warning if what you're about to take interacts with something already active, before you confirm
 
-Combination lookup: A dedicated screen lets you check any two substances against each other directly, without starting any timer, so you can look something up before you're already mid-plan.
+Customizable substances: adjust onset, peak, and offset timing for any bundled substance, or build your own from scratch
 
-PRIVACY
-DoseAngel is 100% offline. Nothing you enter is transmitted anywhere or stored outside your device: no account, no analytics, no cloud sync. A built-in disclosure screen explains this in plain language on first launch.
+Everything is stored on your device, no internet connection required. No accounts, no data collection, nothing ever sent anywhere. Free, with no in-app purchases.
 
-IMPORTANT
-DoseAngel is a personal planning and reference tool, not medical advice. Timing data reflects population averages; individual response varies with dose, body weight, tolerance, and metabolism. It does not calculate or recommend dosages. If you have questions about a specific substance or medical condition, consult a healthcare professional. In an emergency, contact your local emergency services immediately.
+DoseAngel is a planning and reference tool, not medical advice. It does not diagnose or treat any condition, and it does not calculate or recommend dosages. Always check with a doctor in addition to using this app, and before making any medical decisions. In an emergency, contact your local emergency services immediately.
 ```
 
-(~1,850 of 4000 chars, room to expand if you want more feature detail)
+## Rejection response (2026-07-22)
+Rejected under Guideline 1.4.1: the submitted description had no medical disclaimer at all. Added a closing line mirroring Apple's requested language: "remind users to check with a doctor in addition to using the app and before making any medical decisions."
+
+**Action:** Paste the updated Description block above into App Store Connect (App Information > Description), then reply to the rejection message in App Store Connect confirming the change.
 
 ## What's New (v1.0)
 ```

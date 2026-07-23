@@ -15,6 +15,7 @@ function psychonautWikiUrl(name: string): string {
 }
 import { useStopwatch } from '@/store/StopwatchContext';
 import { InteractionWarningModal } from '@/components/InteractionWarningModal';
+import { RedoseWarningModal } from '@/components/RedoseWarningModal';
 import { useInteractionGuard } from '@/hooks/use-interaction-guard';
 import {
   getInteraction,
@@ -101,8 +102,11 @@ function TypeRow({
 
 export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
   const { state, toggleFavorite } = useStopwatch();
-  const { handleStart, pendingType, warningPairs, onConfirm, onCancel } =
-    useInteractionGuard();
+  const {
+    handleStart, pendingType, warningPairs,
+    redosePendingType, redoseRemainingMs,
+    onConfirm, onCancel,
+  } = useInteractionGuard();
 
   // Precompute worst interaction for each type vs currently active stopwatches
   const warningMap = useMemo(() => {
@@ -202,8 +206,9 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
         />
       </View>
 
-      {/* Interaction warning — rendered as absoluteFill overlay inside this Modal
-          to avoid iOS's limitation of only one presented native Modal at a time. */}
+      {/* Interaction and redose warnings — rendered as absoluteFill overlays inside
+          this Modal to avoid iOS's limitation of only one presented native Modal
+          at a time. At most one of the two is ever pending simultaneously. */}
       <InteractionWarningModal
         modal={false}
         visible={pendingType !== null}
@@ -211,6 +216,15 @@ export function AddStopwatchModal({ visible, onClose, isDark }: Props) {
         newSubstanceName={pendingType?.name ?? ''}
         pairs={warningPairs}
         confirmLabel="Start anyway"
+        onConfirm={handleConfirm}
+        onCancel={onCancel}
+      />
+      <RedoseWarningModal
+        modal={false}
+        visible={redosePendingType !== null}
+        isDark={isDark}
+        typeName={redosePendingType?.name ?? ''}
+        remainingMs={redoseRemainingMs}
         onConfirm={handleConfirm}
         onCancel={onCancel}
       />

@@ -46,6 +46,8 @@ export interface AppState {
   showInteractionWarnings: boolean;
   /** Whether to show ⚠ badges in type lists (AddStopwatchModal, AddPlanEntryModal). Default: true. */
   showInteractionBadges: boolean;
+  /** Whether to warn when starting a type that's already active and hasn't peaked yet. Default: true. */
+  showRedoseWarnings: boolean;
   /** How plans are overlaid on the live graph. Default: 'markers'. */
   planOverlayMode: 'markers' | 'curves';
 }
@@ -72,6 +74,7 @@ type Action =
   | { type: 'SAVE_PLAN_EDITS'; payload: { planId: string; name: string; entries: PlannedEntry[] } }
   | { type: 'TOGGLE_INTERACTION_WARNINGS' }
   | { type: 'TOGGLE_INTERACTION_BADGES' }
+  | { type: 'TOGGLE_REDOSE_WARNINGS' }
   | { type: 'SET_PLAN_OVERLAY_MODE'; payload: 'markers' | 'curves' }
   | { type: 'REORDER_TYPES'; payload: string[] }
   | { type: 'HIDE_TYPE'; payload: string }
@@ -86,6 +89,7 @@ const INITIAL_STATE: AppState = {
   plans: [DEFAULT_PLAN],
   showInteractionWarnings: true,
   showInteractionBadges: true,
+  showRedoseWarnings: true,
   planOverlayMode: 'markers',
 };
 
@@ -97,6 +101,7 @@ function reducer(rawState: AppState, action: Action): AppState {
     plans: rawState.plans ?? [DEFAULT_PLAN],
     showInteractionWarnings: rawState.showInteractionWarnings ?? true,
     showInteractionBadges: rawState.showInteractionBadges ?? true,
+    showRedoseWarnings: rawState.showRedoseWarnings ?? true,
     planOverlayMode: rawState.planOverlayMode ?? 'markers',
   };
   switch (action.type) {
@@ -194,6 +199,9 @@ function reducer(rawState: AppState, action: Action): AppState {
 
     case 'TOGGLE_INTERACTION_BADGES':
       return { ...state, showInteractionBadges: !state.showInteractionBadges };
+
+    case 'TOGGLE_REDOSE_WARNINGS':
+      return { ...state, showRedoseWarnings: !state.showRedoseWarnings };
 
     case 'SET_PLAN_OVERLAY_MODE':
       return { ...state, planOverlayMode: action.payload };
@@ -355,6 +363,7 @@ export interface StopwatchContextValue {
   unhideType: (id: string) => void;
   toggleInteractionWarnings: () => void;
   toggleInteractionBadges: () => void;
+  toggleRedoseWarnings: () => void;
   setPlanOverlayMode: (mode: 'markers' | 'curves') => void;
   // Plans
   addPlan: (name: string) => void;
@@ -530,6 +539,10 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: 'TOGGLE_INTERACTION_BADGES' });
   }, []);
 
+  const toggleRedoseWarnings = useCallback(() => {
+    dispatch({ type: 'TOGGLE_REDOSE_WARNINGS' });
+  }, []);
+
   const setPlanOverlayMode = useCallback((mode: 'markers' | 'curves') => {
     dispatch({ type: 'SET_PLAN_OVERLAY_MODE', payload: mode });
   }, []);
@@ -586,7 +599,7 @@ export function StopwatchProvider({ children }: { children: React.ReactNode }) {
       state,
       startStopwatch, stopStopwatch, pauseStopwatch, resumeStopwatch, updateStopwatchStartTime,
       addType, updateType, deleteType, getTypeById, evaluateSum,
-      toggleFavorite, reorderTypes, hideType, unhideType, toggleInteractionWarnings, toggleInteractionBadges, setPlanOverlayMode,
+      toggleFavorite, reorderTypes, hideType, unhideType, toggleInteractionWarnings, toggleInteractionBadges, toggleRedoseWarnings, setPlanOverlayMode,
       addPlan, createPlanWithEntries, renamePlan, deletePlan,
       addPlanEntry, removePlanEntry, updatePlanEntry, savePlanEdits,
     }}>

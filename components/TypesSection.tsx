@@ -15,6 +15,7 @@ import { useStopwatch } from '@/store/StopwatchContext';
 import { TypeCard } from '@/components/TypeCard';
 import { TypeEditorModal } from '@/components/TypeEditorModal';
 import { InteractionWarningModal } from '@/components/InteractionWarningModal';
+import { RedoseWarningModal } from '@/components/RedoseWarningModal';
 import { useInteractionGuard } from '@/hooks/use-interaction-guard';
 import {
   getInteraction,
@@ -39,8 +40,11 @@ export function TypesSection({ isDark }: Props) {
     unhideType,
   } = useStopwatch();
 
-  const { handleStart, pendingType, warningPairs, onConfirm, onCancel } =
-    useInteractionGuard();
+  const {
+    handleStart, pendingType, warningPairs,
+    redosePendingType, redoseRemainingMs,
+    onConfirm, onCancel,
+  } = useInteractionGuard();
 
   const [editorVisible, setEditorVisible] = useState(false);
   const [editTarget, setEditTarget]       = useState<StopwatchType | null>(null);
@@ -189,6 +193,14 @@ export function TypesSection({ isDark }: Props) {
         newSubstanceName={pendingType?.name ?? ''}
         pairs={warningPairs}
         confirmLabel="Start anyway"
+        onConfirm={onConfirm}
+        onCancel={onCancel}
+      />
+      <RedoseWarningModal
+        visible={redosePendingType !== null}
+        isDark={isDark}
+        typeName={redosePendingType?.name ?? ''}
+        remainingMs={redoseRemainingMs}
         onConfirm={onConfirm}
         onCancel={onCancel}
       />
